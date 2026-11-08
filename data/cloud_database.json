@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-11-06T00:40:00.000Z",
+  "users": [
+    {
+      "id": "user_owner",
+      "name": "Rahul Vasudeo",
+      "role": "Owner / Admin",
+      "email": "rahulvasudeo1974@gmail.com"
+    },
+    {
+      "id": "user_desk",
+      "name": "Front Desk Reception",
+      "role": "Manager",
+      "email": "mrudugandhaguesthouse@gmail.com"
+    },
+    {
+      "id": "user_accounts",
+      "name": "Accounts & Cashier",
+      "role": "Accountant",
+      "email": "mrudugandhaguesthouse@gmail.com"
+    },
+    {
+      "id": "user_caretaker",
+      "name": "Caretaker & Housekeeping",
+      "role": "Operations",
+      "email": "mrudugandhaguesthouse@gmail.com"
+    }
+  ],
+  "bookings": [],
+  "expenses": [],
+  "settings": {
+    "propertyName": "Mrudugandha Guesthouse",
+    "tagline": "Kotawade, Ganapatipule Road, Ratnagiri",
+    "logoUrl": "/assets/aistudio/gh_971f9189.jpeg",
+    "address": "Plot No. 13 & 14, Kokanwadi NA Plots Society, Ganapatipule Road, Kotawade",
+    "city": "Kotawade, Tal., Dist. Ratnagiri",
+    "state": "Maharashtra",
+    "pincode": "415617",
+    "phone": "9890289088",
+    "email": "mrudugandhaguesthouse@gmail.com",
+    "gstNumber": "27AABCM8921M1ZX",
+    "panNumber": "AABCM8921M",
+    "upiId": "9890289088@upi",
+    "bankDetails": "HDFC Bank - Ratnagiri Branch, A/C: 50200099441122, IFSC: HDFC0000412",
+    "defaultCheckInTime": "13:00",
+    "defaultCheckOutTime": "11:00",
+    "units": [
+      {
+        "id": "unit_full_villa",
+        "name": "Full Villa",
+        "baseRatePerNight": 15000,
+        "isActive": true
+      },
+      {
+        "id": "unit_gf",
+        "name": "Ground Floor",
+        "baseRatePerNight": 8000,
+        "isActive": true
+      },
+      {
+        "id": "unit_ff",
+        "name": "First Floor",
+        "baseRatePerNight": 6000,
+        "isActive": true
+      },
+      {
+        "id": "unit_cottages_all",
+        "name": "Both Cottages",
+        "baseRatePerNight": 6000,
+        "isActive": true
+      },
+      {
+        "id": "unit_cottage_1",
+        "name": "Cottage 1",
+        "baseRatePerNight": 3000,
+        "isActive": true
+      },
+      {
+        "id": "unit_cottage_2",
+        "name": "Cottage 2",
+        "baseRatePerNight": 3000,
+        "isActive": true
+      }
+    ],
+    "customChannels": [
+      "Social Media",
+      "Airbnb",
+      "Booking.com",
+      "MakeMyTrip (MMT)",
+      "Google Search / Maps",
+      "Reference / Word of Mouth",
+      "Existing Guest / Repeat",
+      "Agents / Travel Partner"
+    ],
+    "currencySymbol": "₹"
+  }
+}

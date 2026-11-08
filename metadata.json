@@ -1,0 +1,6 @@
+{
+  "name": "mrudugandhaguesthouse-manager.ai.studio",
+  "description": "Custom guesthouse booking, guest ledger, and operating expense management system with Indian Rupee financials and invoice generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
