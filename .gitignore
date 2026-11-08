@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 data/backups/
+data/cloud_database.json
