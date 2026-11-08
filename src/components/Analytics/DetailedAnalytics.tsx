@@ -46,10 +46,14 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
     return filteredBookings.filter(b => b.status !== 'Cancelled');
   }, [filteredBookings]);
 
-  // Aggregate Numbers
+  // Aggregate Numbers: Active bookings payable + non-refundable retained advances from cancellations
   const totalRevenue = useMemo(() => {
-    return validBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-  }, [validBookings]);
+    const active = validBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    const retainedCancelled = filteredBookings
+      .filter(b => b.status === 'Cancelled')
+      .reduce((sum, b) => sum + (b.advancePaid || 0), 0);
+    return active + retainedCancelled;
+  }, [validBookings, filteredBookings]);
 
   const totalExpenses = useMemo(() => {
     return filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);

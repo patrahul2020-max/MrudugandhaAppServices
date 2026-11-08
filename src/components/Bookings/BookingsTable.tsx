@@ -977,7 +977,41 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                   </div>
 
                   {/* Add Balance Amount Tab / Button on Card */}
-                  {b.balanceAmount > 0 ? (
+                  {/* Cancellation Policy Banner on Cancelled Bookings */}
+                  {b.status === 'Cancelled' ? (
+                    <div className="mt-2 p-2 bg-rose-50/90 border border-rose-300 rounded-lg text-xs">
+                      <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-rose-950">
+                        <span>Cancellation Policy: No Refund</span>
+                        <span className="font-mono text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300">
+                          Retained: {formatCurrencyINR(b.advancePaid)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-rose-800 mt-1.5 flex items-center justify-between gap-1">
+                        <span>
+                          {(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const checkIn = new Date(b.checkInDate);
+                            checkIn.setHours(0, 0, 0, 0);
+                            const daysUntil = Math.ceil((checkIn.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            if (daysUntil > 15) {
+                              return `Cancelled >15 days prior (${daysUntil}d) · Reschedulable`;
+                            } else {
+                              return `Cancelled ≤15 days prior (${Math.max(0, daysUntil)}d) · Non-refundable / Forfeited`;
+                            }
+                          })()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onEditBooking(b)}
+                          className="px-2 py-0.5 text-[10px] font-bold bg-white text-rose-800 border border-rose-300 rounded hover:bg-rose-100 transition-colors cursor-pointer shrink-0"
+                          title="Reschedule dates for this cancelled reservation"
+                        >
+                          Reschedule
+                        </button>
+                      </div>
+                    </div>
+                  ) : b.balanceAmount > 0 ? (
                     <div className="mt-2 p-2 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-1.5 text-amber-900 min-w-0">
                         <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -1278,7 +1312,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                       {/* Actions: Add Balance, Edit & Delete */}
                       <td className="py-2.5 px-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {b.balanceAmount > 0 && (
+                          {b.status !== 'Cancelled' && b.balanceAmount > 0 && (
                             <button
                               type="button"
                               onClick={() => openAddBalanceModal(b)}

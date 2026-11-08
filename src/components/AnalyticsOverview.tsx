@@ -29,17 +29,23 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
     return e.date.startsWith(selectedMonth);
   });
 
-  // Financial calculations
-  // Active/valid bookings (exclude cancelled from revenue)
+  // Financial calculations under Mrudugandha Policy:
+  // Policy: No cash refunds for cancellations. All collected advances are retained.
+  // Bookings cancelled >15 days prior are eligible for date rescheduling; <=15 days are non-refundable/forfeited.
   const validBookings = filteredBookings.filter(b => b.status !== 'Cancelled');
+  const cancelledBookings = filteredBookings.filter(b => b.status === 'Cancelled');
 
-  // Total Revenue: Total amount payable across non-cancelled bookings
-  const totalRevenue = validBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  // Retained Advances from Cancelled Bookings (Under Mrudugandha policy, all advances collected are retained)
+  const retainedCancelledAdvances = cancelledBookings.reduce((sum, b) => sum + (b.advancePaid || 0), 0);
 
-  // Total Advance collected
-  const totalAdvanceCollected = validBookings.reduce((sum, b) => sum + (b.advancePaid || 0), 0);
+  // Total Advance collected across ALL bookings (active + non-refundable retained advances)
+  const totalAdvanceCollected = filteredBookings.reduce((sum, b) => sum + (b.advancePaid || 0), 0);
 
-  // Total Pending / Balance Due: Pending balance from upcoming or active guests
+  // Total Revenue: Active bookings total payable + Retained advance fees from cancellations
+  const activeBookingsRevenue = validBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalRevenue = activeBookingsRevenue + retainedCancelledAdvances;
+
+  // Total Pending / Balance Due: Only active bookings have pending balances (cancelled bookings do not owe balance)
   const totalBalanceDue = validBookings
     .filter(b => b.balanceStatus === 'Pending' || b.balanceStatus === 'Partial')
     .reduce((sum, b) => sum + (b.balanceAmount || 0), 0);

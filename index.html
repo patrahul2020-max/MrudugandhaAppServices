@@ -24,23 +24,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-      // Suppress Vite HMR WebSocket disconnect noise from triggering error overlay
-      window.addEventListener('error', function(e) {
-        if (e && (
-          (e.message && /websocket/i.test(e.message)) ||
-          (e.filename && e.filename.includes('@vite/client'))
-        )) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          return true;
-        }
-      }, true);
-      window.addEventListener('unhandledrejection', function(e) {
-        if (e && e.reason && /websocket/i.test(String(e.reason))) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-        }
-      }, true);
+      // Suppress Vite HMR WebSocket disconnect noise from triggering console error overlay in AI Studio preview
+      (function() {
+        const _origError = console.error;
+        console.error = function(...args) {
+          if (args.length > 0 && typeof args[0] === 'string' && (args[0].includes('[vite]') || args[0].includes('WebSocket') || args[0].includes('websocket'))) {
+            return;
+          }
+          _origError.apply(console, args);
+        };
+        const _origWarn = console.warn;
+        console.warn = function(...args) {
+          if (args.length > 0 && typeof args[0] === 'string' && (args[0].includes('[vite]') || args[0].includes('WebSocket') || args[0].includes('websocket'))) {
+            return;
+          }
+          _origWarn.apply(console, args);
+        };
+        window.addEventListener('error', function(e) {
+          if (e && (
+            (e.message && /websocket/i.test(e.message)) ||
+            (e.filename && e.filename.includes('@vite/client'))
+          )) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e && e.reason && /websocket/i.test(String(e.reason))) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
     </script>
   </head>
   <body>
