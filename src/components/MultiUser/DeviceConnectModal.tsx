@@ -114,45 +114,45 @@ export const DeviceConnectModal: React.FC<DeviceConnectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white p-4 sm:p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Radio className="w-5 h-5 text-emerald-300 animate-pulse" />
+        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white p-3.5 sm:p-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
+              <Radio className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-300 animate-pulse" />
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-bold truncate">
                 Multi-User Cloud Setup & Device Link
               </h3>
-              <p className="text-xs text-emerald-200/80">
+              <p className="text-[11px] sm:text-xs text-emerald-200/80 truncate">
                 Connect multiple phones, tablets, & PCs at the same time with instant sync
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0 ml-2"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
           {/* Section 1: How to connect other devices */}
-          <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row items-center gap-5">
+          <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
               {/* QR Code Container */}
               <div className="bg-white p-2.5 rounded-xl border border-emerald-300 shadow-sm shrink-0 text-center">
                 {qrCodeUrl ? (
                   <img
                     src={qrCodeUrl}
                     alt="Scan to open on phone"
-                    className="w-36 h-36 sm:w-40 sm:h-40 mx-auto object-contain"
+                    className="w-32 h-32 sm:w-40 sm:h-40 mx-auto object-contain"
                   />
                 ) : (
-                  <div className="w-36 h-36 flex items-center justify-center text-xs text-slate-400">
+                  <div className="w-32 h-32 flex items-center justify-center text-xs text-slate-400">
                     Generating QR...
                   </div>
                 )}
@@ -162,7 +162,7 @@ export const DeviceConnectModal: React.FC<DeviceConnectModalProps> = ({
               </div>
 
               {/* URL & Instant Action Buttons */}
-              <div className="flex-1 space-y-2.5 w-full">
+              <div className="flex-1 space-y-2.5 w-full min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950 uppercase tracking-wide">
                   <span>Open on Mobile Phone or Staff Tablet</span>
                 </div>
@@ -176,23 +176,23 @@ export const DeviceConnectModal: React.FC<DeviceConnectModalProps> = ({
                     type="text"
                     readOnly
                     value={shareUrl}
-                    className="flex-1 text-xs font-mono text-slate-800 bg-transparent px-2 focus:outline-hidden select-all"
+                    className="flex-1 text-xs font-mono text-slate-800 bg-transparent px-2 focus:outline-hidden select-all min-w-0 truncate"
                   />
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
                       copied
                         ? 'bg-emerald-800 text-white'
                         : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
                     }`}
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
                     onClick={handleShareWhatsApp}

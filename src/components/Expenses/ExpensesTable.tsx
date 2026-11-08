@@ -182,9 +182,93 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
         </div>
       </div>
 
-      {/* Expenses Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Mobile Card Feed (md:hidden) - Perfect phone view without horizontal scrolling */}
+      <div className="md:hidden space-y-2.5">
+        {filteredExpenses.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+            <Receipt className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="font-semibold text-slate-700">No expense records found</p>
+            <p className="text-xs text-slate-400 mt-1">Record a vendor payment, staff wage, or utility bill.</p>
+          </div>
+        ) : (
+          filteredExpenses.map(e => (
+            <div
+              key={e.id}
+              className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-2.5"
+            >
+              {/* Header: Category & Amount */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-bold text-sm text-slate-900 block truncate">
+                    {e.category}
+                  </span>
+                  <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono">{formatDateINR(e.date)}</span>
+                    <span>·</span>
+                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-medium">
+                      {getPaymentModeIcon(e.paymentMode)}
+                      <span>{e.paymentMode}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="font-mono font-bold text-base text-rose-900 tabular-nums">
+                    {formatCurrencyINR(e.amount)}
+                  </div>
+                  {e.receiptUrl && (
+                    <button
+                      onClick={() => setPreviewReceiptUrl(e.receiptUrl || null)}
+                      className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 text-slate-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 rounded text-[10px] font-bold border border-amber-200 cursor-pointer"
+                    >
+                      <ImageIcon className="w-3 h-3 text-amber-700" />
+                      <span>Receipt</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Description / Vendor Note */}
+              {e.description && (
+                <div className="text-xs text-slate-700 bg-slate-50 rounded-lg p-2 border border-slate-100 break-words">
+                  {e.description}
+                  {e.recordedBy && (
+                    <span className="block text-[10px] text-emerald-800 font-medium mt-1">
+                      ☁ Recorded by: {e.recordedBy}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => onEditExpense(e)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete expense for ${formatCurrencyINR(e.amount)} (${e.category})?`)) {
+                      onDeleteExpense(e.id);
+                    }
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Spreadsheet Table (hidden md:block) */}
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden max-w-full">
+        <div className="overflow-x-auto max-w-full">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
               <tr>

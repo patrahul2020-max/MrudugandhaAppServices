@@ -142,41 +142,41 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
   }, [filteredExpenses, totalExpenses]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
       {/* Hospitality Core Metrics Banner */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-          <div className="text-xs text-slate-500 font-medium">Average Daily Rate (ADR)</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 mt-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Average Daily Rate (ADR)</div>
+          <div className="text-base sm:text-2xl font-bold font-mono text-slate-900 mt-1 truncate">
             {formatCurrencyINR(averageDailyRate)}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Per booked room-night</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">Per booked room-night</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-          <div className="text-xs text-slate-500 font-medium">Net Profit Margin</div>
-          <div className={`text-xl sm:text-2xl font-bold font-mono mt-1 ${profitMargin >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Net Profit Margin</div>
+          <div className={`text-base sm:text-2xl font-bold font-mono mt-1 truncate ${profitMargin >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
             {profitMargin}%
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">After expenses & OTA commissions</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">After expenses & OTAs</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-          <div className="text-xs text-slate-500 font-medium">Total OTA Commissions Paid</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-amber-900 mt-1">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">OTA Commissions</div>
+          <div className="text-base sm:text-2xl font-bold font-mono text-amber-900 mt-1 truncate">
             {formatCurrencyINR(totalCommissions)}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            {totalRevenue > 0 ? `${Math.round((totalCommissions / totalRevenue) * 100)}% of gross revenue` : '—'}
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">
+            {totalRevenue > 0 ? `${Math.round((totalCommissions / totalRevenue) * 100)}% of revenue` : '—'}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-          <div className="text-xs text-slate-500 font-medium">Room-Nights Delivered</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-sky-900 mt-1">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Room-Nights</div>
+          <div className="text-base sm:text-2xl font-bold font-mono text-sky-900 mt-1 truncate">
             {totalRoomNightsBooked} Nights
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Across {validBookings.length} completed/active stays</div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">Across {validBookings.length} stays</div>
         </div>
       </div>
 

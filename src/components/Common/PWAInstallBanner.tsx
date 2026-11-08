@@ -26,24 +26,24 @@ export const PWAInstallBanner: React.FC = () => {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white px-3 sm:px-4 py-2.5 sm:py-3 border-b border-emerald-700/60 shadow-sm animate-in fade-in duration-200">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white px-3 sm:px-4 py-2 sm:py-3 border-b border-emerald-700/60 shadow-sm animate-in fade-in duration-200 w-full max-w-full overflow-hidden">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5">
           {/* Info */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-300/40 flex items-center justify-center text-amber-200 shrink-0 shadow-xs">
-              <Smartphone className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400/20 border border-amber-300/40 flex items-center justify-center text-amber-200 shrink-0 shadow-xs">
+              <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
-                  Install Mrudugandha App on Mobile Phone
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate">
+                  Install Mrudugandha on Phone
                 </span>
-                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
+                <span className="text-[9px] sm:text-[10px] uppercase font-extrabold px-1.5 sm:px-2 py-0.2 rounded-full bg-amber-400 text-amber-950 shadow-2xs shrink-0">
                   1-Click Setup
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-200/90 leading-tight">
-                Add to your phone's Home Screen for 1-click launch, fullscreen front-desk, and instant login on every device.
+              <p className="text-[10px] sm:text-[11px] text-emerald-200/90 leading-tight truncate sm:whitespace-normal">
+                Add to your phone's Home Screen for 1-click launch and instant sync across devices.
               </p>
             </div>
           </div>

@@ -133,26 +133,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      <form onSubmit={handleSave} className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto pb-12 w-full max-w-full overflow-hidden">
+      <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
         {/* Top Header / Save Status */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Property Configuration & Settings</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Property Configuration & Settings</h1>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
               Customize guesthouse identity, room inventory, channels, and billing details
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {savedSuccess && (
               <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 animate-in fade-in">
-                <CheckCircle className="w-4 h-4" /> Settings Saved!
+                <CheckCircle className="w-4 h-4" /> Saved!
               </span>
             )}
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-xs cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Save Configuration</span>
@@ -161,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Section 1: Property Identity & Contact */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2 border-b border-slate-100 pb-2">
             <Building className="w-4 h-4 text-emerald-800" />
             <span>01. Guesthouse Profile & Tax Particulars</span>

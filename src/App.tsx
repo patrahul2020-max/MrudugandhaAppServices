@@ -384,7 +384,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       {/* 1-Click Mobile Phone Installation Banner (Suppressed when already running as installed PWA) */}
       <PWAInstallBanner />
 
@@ -413,8 +413,8 @@ export default function App() {
         />
       )}
 
-      {/* Main Viewport Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Viewport Content - Mobile constrained with zero right-left overflow */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
         {currentTab === 'bookings' && (
           <BookingsTable
             bookings={bookings}
@@ -556,12 +556,12 @@ export default function App() {
 
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2.5 animate-in slide-in-from-top-3 fade-in duration-200">
-          <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-          <span>{toastMessage}</span>
+        <div className="fixed top-16 sm:top-20 right-3 sm:right-6 max-w-[calc(100vw-24px)] z-50 bg-slate-900 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2 animate-in slide-in-from-top-3 fade-in duration-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></div>
+          <span className="truncate">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="text-slate-400 hover:text-white ml-2 text-sm cursor-pointer"
+            className="text-slate-400 hover:text-white ml-2 text-sm cursor-pointer shrink-0"
           >
             ✕
           </button>

@@ -30,27 +30,27 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-6 h-16">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print w-full max-w-full">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-2 sm:gap-6 h-14 sm:h-16">
           {/* Brand Zone: Clean wordmark and identity with Logo */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {settings.logoUrl ? (
               <img
                 src={settings.logoUrl}
                 alt={settings.propertyName}
-                className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-xs"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover border border-slate-200 shadow-xs shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-emerald-800 text-amber-200 flex items-center justify-center font-bold text-lg shadow-inner">
-                <Home className="w-5 h-5 text-amber-300" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-800 text-amber-200 flex items-center justify-center font-bold text-base sm:text-lg shadow-inner shrink-0">
+                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
               </div>
             )}
-            <div>
-              <div className="text-base sm:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap leading-none uppercase">
+            <div className="min-w-0">
+              <div className="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-slate-900 truncate max-w-[130px] xs:max-w-[190px] sm:max-w-none leading-none uppercase">
                 {settings.propertyName || 'MRUDUGANDHA GUESTHOUSE'}
               </div>
-              <div className="text-[11px] text-slate-500 font-medium whitespace-nowrap mt-1">
+              <div className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden sm:block mt-1">
                 {settings.tagline || 'Kotawade, Ganapatipule Road, Ratnagiri'}
               </div>
             </div>
@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Primary Action Zone: Cloud Multi-User Status, Backups & Active User Switcher */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* PWA 1-Click Install Button */}
             <PWAInstallButton className="hidden md:inline-flex" />
 
@@ -113,10 +113,10 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenBackupModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-semibold text-slate-800 transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-semibold text-slate-800 transition-all shadow-2xs hover:shadow-xs cursor-pointer"
               title="Cloud Backups & Data Protection: Download backup, take snapshots, or restore"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span className="hidden sm:inline">Backups</span>
             </button>
 
@@ -124,16 +124,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenConnectModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-950 transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-950 transition-all shadow-2xs hover:shadow-xs cursor-pointer"
               title="Click to view connected devices, QR code login for phones, or share link"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <Cloud className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              <Cloud className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span className="hidden sm:inline">Cloud Multi-User</span>
               <span className="bg-emerald-200/90 text-emerald-900 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {connectedDevices.length > 0 ? `${connectedDevices.length} Online` : 'Live'}
+                {connectedDevices.length > 0 ? `${connectedDevices.length}` : 'Live'}
               </span>
-              <Smartphone className="w-3 h-3 text-emerald-800" />
+              <Smartphone className="w-3 h-3 text-emerald-800 hidden xs:inline" />
             </button>
 
             {/* Multi-User Profile Switcher */}
@@ -141,21 +141,21 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2 py-1 px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 py-1 px-1.5 sm:px-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
                 title="Switch Multi-User Profile"
               >
-                <div className="w-6 h-6 rounded-full bg-slate-900 text-amber-200 flex items-center justify-center text-[10px] font-bold">
+                <div className="w-6 h-6 rounded-full bg-slate-900 text-amber-200 flex items-center justify-center text-[10px] font-bold shrink-0">
                   {activeUser.name.charAt(0)}
                 </div>
                 <div className="text-left hidden sm:block">
                   <div className="leading-tight text-[11px] font-bold text-slate-900">{activeUser.name}</div>
                   <div className="leading-none text-[10px] text-slate-500 font-normal">{activeUser.role}</div>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               </button>
 
               {showUserDropdown && (
-                <div className="absolute right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in duration-150">
+                <div className="absolute right-0 mt-1 w-64 max-w-[calc(100vw-24px)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in duration-150">
                   <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
@@ -226,43 +226,43 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile Navigation Row */}
-        <div className="md:hidden flex items-center justify-around border-t border-slate-100 py-2">
+        {/* Mobile Navigation Row: Touch-friendly 44px hitbox, evenly distributed */}
+        <div className="md:hidden grid grid-cols-4 border-t border-slate-100 py-1 bg-white">
           <button
             onClick={() => setCurrentTab('bookings')}
-            className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded ${
-              currentTab === 'bookings' ? 'text-emerald-800 font-bold' : 'text-slate-600'
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+              currentTab === 'bookings' ? 'text-emerald-900 font-bold bg-emerald-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Calendar className="w-4 h-4" />
-            Bookings
+            <Calendar className={`w-4 h-4 ${currentTab === 'bookings' ? 'text-emerald-700' : 'text-slate-500'}`} />
+            <span>Bookings</span>
           </button>
           <button
             onClick={() => setCurrentTab('expenses')}
-            className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded ${
-              currentTab === 'expenses' ? 'text-amber-800 font-bold' : 'text-slate-600'
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+              currentTab === 'expenses' ? 'text-amber-900 font-bold bg-amber-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <ReceiptText className="w-4 h-4" />
-            Expenses
+            <ReceiptText className={`w-4 h-4 ${currentTab === 'expenses' ? 'text-amber-700' : 'text-slate-500'}`} />
+            <span>Expenses</span>
           </button>
           <button
             onClick={() => setCurrentTab('analytics')}
-            className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded ${
-              currentTab === 'analytics' ? 'text-sky-800 font-bold' : 'text-slate-600'
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+              currentTab === 'analytics' ? 'text-sky-900 font-bold bg-sky-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
+            <BarChart3 className={`w-4 h-4 ${currentTab === 'analytics' ? 'text-sky-700' : 'text-slate-500'}`} />
+            <span>Financials</span>
           </button>
           <button
             onClick={() => setCurrentTab('settings')}
-            className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded ${
-              currentTab === 'settings' ? 'text-slate-900 font-bold' : 'text-slate-600'
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+              currentTab === 'settings' ? 'text-slate-900 font-bold bg-slate-100 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Settings className="w-4 h-4" />
-            Settings
+            <Settings className={`w-4 h-4 ${currentTab === 'settings' ? 'text-slate-800' : 'text-slate-500'}`} />
+            <span>Settings</span>
           </button>
         </div>
       </div>

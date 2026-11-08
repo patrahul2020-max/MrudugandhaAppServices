@@ -461,44 +461,44 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   return (
     <div className="space-y-4">
       {/* Dedicated Section Header with Prominent Add Booking CTA */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
               Guest Bookings & Reservation Ledger
             </h2>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              {bookings.length} Total Stays
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+              {bookings.length} Stays
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
             Track stay dates, advance deposits, balance collections, and government ID slips
           </p>
         </div>
 
         {/* Primary Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setShowQuickAdd(!showQuickAdd)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
               showQuickAdd
                 ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
                 : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-700'
             }`}
             title="Toggle Fast Single-Row Quick Booking"
           >
-            <span>⚡ Quick Add Bar</span>
+            <span>⚡ Quick Bar</span>
           </button>
 
           <button
             type="button"
             onClick={onNewBooking}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 active:scale-98 text-white rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow-md cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-emerald-800 hover:bg-emerald-900 active:scale-98 text-white rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow-md cursor-pointer"
             title="Open Complete Reservation Form"
           >
             <Plus className="w-4 h-4" />
-            <span className="text-sm">+ Add New Booking</span>
+            <span className="text-xs sm:text-sm whitespace-nowrap">+ Add Booking</span>
           </button>
         </div>
       </div>
@@ -629,10 +629,10 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
       )}
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs space-y-3 w-full max-w-full overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 w-full md:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -644,20 +644,20 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Quick Date Filters, Export, and Prominent Add Button */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs flex-wrap gap-0.5">
+          {/* Quick Date Filters, Export, and View Switcher */}
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs max-w-full overflow-x-auto no-scrollbar gap-0.5">
               <button
                 type="button"
                 onClick={() => setDateRangeFilter('ALL')}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   dateRangeFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -666,7 +666,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <button
                 type="button"
                 onClick={() => setDateRangeFilter('THIS_MONTH')}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   dateRangeFilter === 'THIS_MONTH' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -675,14 +675,14 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
               {/* Month Selector Tab directly beside This Month */}
               <div
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   dateRangeFilter === 'CUSTOM_MONTH'
                     ? 'bg-white text-emerald-950 font-bold shadow-xs border border-emerald-300'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span className="text-xs font-semibold hidden sm:inline">Select Month:</span>
+                <span className="text-xs font-semibold hidden sm:inline">Month:</span>
                 <input
                   type="month"
                   value={customMonth}
@@ -702,7 +702,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <button
                 type="button"
                 onClick={() => setDateRangeFilter('PENDING_BALANCE')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   dateRangeFilter === 'PENDING_BALANCE'
                     ? 'bg-amber-600 text-white font-bold shadow-xs'
                     : pendingBalanceStats.count > 0
@@ -727,7 +727,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <button
                 type="button"
                 onClick={() => setDateRangeFilter('UPCOMING')}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   dateRangeFilter === 'UPCOMING' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -737,7 +737,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0"
               title="Download bookings ledger as Excel compatible CSV"
             >
               <Download className="w-3.5 h-3.5 text-slate-600" />
@@ -745,7 +745,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </button>
 
             {/* View Mode Switcher: Mobile Cards vs Spreadsheet Table */}
-            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs">
+            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs shrink-0">
               <button
                 type="button"
                 onClick={() => setMobileViewMode('cards')}
@@ -1083,8 +1083,8 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
         </div>
       ) : (
         /* Spreadsheet Grid Table */
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden max-w-full">
+          <div className="overflow-x-auto max-w-full">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
                 <tr>
