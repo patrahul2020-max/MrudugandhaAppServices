@@ -4,6 +4,18 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import {
+  fetchAllBookings,
+  saveBookingToDb,
+  deleteBookingFromDb,
+  fetchAllExpenses,
+  saveExpenseToDb,
+  deleteExpenseFromDb,
+  fetchPropertySettings,
+  savePropertySettingsToDb,
+  fetchUsersFromDb,
+  seedDefaultUsers,
+} from './src/db/repository.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -213,6 +225,33 @@ function saveCloudDb(db: CloudDatabase, forceBackup: boolean = false): void {
 
 let inMemoryDb = loadCloudDb();
 
+async function syncFromCloudSql() {
+  try {
+    await seedDefaultUsers(DEFAULT_USERS);
+    const dbUsers = await fetchUsersFromDb();
+    if (dbUsers && dbUsers.length > 0) {
+      inMemoryDb.users = dbUsers;
+    }
+    const dbSettings = await fetchPropertySettings();
+    if (dbSettings) {
+      inMemoryDb.settings = dbSettings;
+    } else {
+      await savePropertySettingsToDb(inMemoryDb.settings);
+    }
+    const dbBookings = await fetchAllBookings();
+    if (dbBookings && dbBookings.length > 0) {
+      inMemoryDb.bookings = dbBookings;
+    }
+    const dbExpenses = await fetchAllExpenses();
+    if (dbExpenses && dbExpenses.length > 0) {
+      inMemoryDb.expenses = dbExpenses;
+    }
+    console.log(`✓ Synchronized with Cloud SQL PostgreSQL (${inMemoryDb.bookings.length} bookings, ${inMemoryDb.expenses.length} expenses)`);
+  } catch (err) {
+    console.error('Initial Cloud SQL sync notice (will use cache):', err);
+  }
+}
+
 // --- Active Multi-User Devices Presence Tracking ---
 interface ConnectedDevice {
   deviceId: string;
@@ -320,10 +359,16 @@ app.get('/api/bookings', (_req, res) => {
   res.json({ success: true, bookings: inMemoryDb.bookings, version: inMemoryDb.version });
 });
 
-app.post('/api/bookings', (req, res) => {
+app.post('/api/bookings', async (req, res) => {
   const booking = req.body;
   if (!booking || !booking.id) {
     return res.status(400).json({ success: false, error: 'Invalid booking data' });
+  }
+
+  try {
+    await saveBookingToDb(booking);
+  } catch (dbErr) {
+    console.error('PostgreSQL booking save error:', dbErr);
   }
 
   const existingIdx = inMemoryDb.bookings.findIndex(b => b.id === booking.id);
@@ -348,9 +393,16 @@ app.post('/api/bookings', (req, res) => {
   res.json({ success: true, booking, version: inMemoryDb.version });
 });
 
-app.post('/api/bookings/batch', (req, res) => {
+app.post('/api/bookings/batch', async (req, res) => {
   const { bookings } = req.body;
   if (Array.isArray(bookings)) {
+    for (const b of bookings) {
+      try {
+        await saveBookingToDb(b);
+      } catch (err) {
+        console.error('Batch save error:', err);
+      }
+    }
     inMemoryDb.bookings = bookings;
     saveCloudDb(inMemoryDb);
     broadcastSSE('cloud_update', { type: 'batch_bookings', version: inMemoryDb.version, data: inMemoryDb });
@@ -360,8 +412,14 @@ app.post('/api/bookings/batch', (req, res) => {
   }
 });
 
-app.delete('/api/bookings/:id', (req, res) => {
+app.delete('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
+  try {
+    await deleteBookingFromDb(id);
+  } catch (dbErr) {
+    console.error('PostgreSQL booking delete error:', dbErr);
+  }
+
   const target = inMemoryDb.bookings.find(b => b.id === id);
   inMemoryDb.bookings = inMemoryDb.bookings.filter(b => b.id !== id);
   saveCloudDb(inMemoryDb);
@@ -381,10 +439,16 @@ app.get('/api/expenses', (_req, res) => {
   res.json({ success: true, expenses: inMemoryDb.expenses, version: inMemoryDb.version });
 });
 
-app.post('/api/expenses', (req, res) => {
+app.post('/api/expenses', async (req, res) => {
   const expense = req.body;
   if (!expense || !expense.id) {
     return res.status(400).json({ success: false, error: 'Invalid expense data' });
+  }
+
+  try {
+    await saveExpenseToDb(expense);
+  } catch (dbErr) {
+    console.error('PostgreSQL expense save error:', dbErr);
   }
 
   const existingIdx = inMemoryDb.expenses.findIndex(e => e.id === expense.id);
@@ -410,9 +474,16 @@ app.post('/api/expenses', (req, res) => {
   res.json({ success: true, expense, version: inMemoryDb.version });
 });
 
-app.post('/api/expenses/batch', (req, res) => {
+app.post('/api/expenses/batch', async (req, res) => {
   const { expenses } = req.body;
   if (Array.isArray(expenses)) {
+    for (const exp of expenses) {
+      try {
+        await saveExpenseToDb(exp);
+      } catch (err) {
+        console.error('Batch save expense error:', err);
+      }
+    }
     inMemoryDb.expenses = expenses;
     saveCloudDb(inMemoryDb);
     broadcastSSE('cloud_update', { type: 'batch_expenses', version: inMemoryDb.version, data: inMemoryDb });
@@ -422,8 +493,14 @@ app.post('/api/expenses/batch', (req, res) => {
   }
 });
 
-app.delete('/api/expenses/:id', (req, res) => {
+app.delete('/api/expenses/:id', async (req, res) => {
   const { id } = req.params;
+  try {
+    await deleteExpenseFromDb(id);
+  } catch (dbErr) {
+    console.error('PostgreSQL expense delete error:', dbErr);
+  }
+
   inMemoryDb.expenses = inMemoryDb.expenses.filter(e => e.id !== id);
   saveCloudDb(inMemoryDb);
   broadcastSSE('cloud_update', {
@@ -441,10 +518,16 @@ app.get('/api/settings', (_req, res) => {
   res.json({ success: true, settings: inMemoryDb.settings, version: inMemoryDb.version });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const settings = req.body;
   if (settings && typeof settings === 'object') {
     inMemoryDb.settings = { ...inMemoryDb.settings, ...settings };
+    try {
+      await savePropertySettingsToDb(inMemoryDb.settings);
+    } catch (dbErr) {
+      console.error('PostgreSQL settings save error:', dbErr);
+    }
+
     saveCloudDb(inMemoryDb);
     broadcastSSE('cloud_update', { type: 'settings', version: inMemoryDb.version, data: inMemoryDb });
     res.json({ success: true, settings: inMemoryDb.settings, version: inMemoryDb.version });
@@ -612,6 +695,9 @@ async function startServer() {
 
     app.use(vite.middlewares);
   }
+
+  // Synchronize initial data from Cloud SQL PostgreSQL
+  await syncFromCloudSql();
 
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Mrudugandha Guesthouse Management Server running on http://0.0.0.0:${PORT} [${isProduction && hasDist ? 'production' : 'development'}]`);
