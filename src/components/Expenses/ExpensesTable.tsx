@@ -1,5 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Download, Edit2, Trash2, Receipt, Image as ImageIcon, X, CreditCard, Banknote, Smartphone } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Download,
+  Edit2,
+  Trash2,
+  Receipt,
+  Image as ImageIcon,
+  X,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Calendar,
+  CalendarDays,
+  ArrowRight,
+  Filter,
+  RotateCcw
+} from 'lucide-react';
 import { Expense, ExpenseCategory } from '../../types';
 import { formatDateINR, formatCurrencyINR, downloadCSV } from '../../utils/formatters';
 
@@ -24,30 +41,126 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(null);
 
-  // Filtered expenses
+  // Date-wise filtering state
+  const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'ALL_TIME' | 'TODAY' | 'YESTERDAY' | 'THIS_MONTH' | 'SPECIFIC_DATE' | 'DATE_RANGE'>('MONTH');
+  const [specificDate, setSpecificDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const resetAllFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('ALL');
+    setDateFilterMode('MONTH');
+    setSpecificDate('');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const isAnyFilterActive =
+    searchTerm.trim() !== '' ||
+    categoryFilter !== 'ALL' ||
+    dateFilterMode !== 'MONTH' ||
+    specificDate !== '' ||
+    startDate !== '' ||
+    endDate !== '';
+
+  // Filtered expenses with comprehensive date-wise and text matching
   const filteredExpenses = useMemo(() => {
     return expenses.filter(e => {
-      // Month match (if not 'ALL')
-      if (selectedMonth !== 'ALL' && !e.date.startsWith(selectedMonth)) {
-        return false;
+      // 1. Date filter mode evaluation
+      if (dateFilterMode === 'TODAY') {
+        if (e.date !== todayStr) return false;
+      } else if (dateFilterMode === 'YESTERDAY') {
+        if (e.date !== yesterdayStr) return false;
+      } else if (dateFilterMode === 'THIS_MONTH') {
+        const thisMonthPrefix = todayStr.substring(0, 7);
+        if (!e.date.startsWith(thisMonthPrefix)) return false;
+      } else if (dateFilterMode === 'SPECIFIC_DATE') {
+        if (specificDate && e.date !== specificDate) return false;
+      } else if (dateFilterMode === 'DATE_RANGE') {
+        if (startDate && e.date < startDate) return false;
+        if (endDate && e.date > endDate) return false;
+      } else if (dateFilterMode === 'ALL_TIME') {
+        // No date restriction
+      } else {
+        // 'MONTH': respect header month filter unless overridden by user search
+        if (selectedMonth !== 'ALL' && !searchTerm.trim() && !e.date.startsWith(selectedMonth)) {
+          return false;
+        }
       }
 
-      // Search description
+      // 2. Comprehensive Search: matches description, vendor, category, payment mode, amount, AND DATES
       if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const matchDesc = e.description.toLowerCase().includes(query);
-        const matchCat = e.category.toLowerCase().includes(query);
-        if (!matchDesc && !matchCat) return false;
+        const query = searchTerm.toLowerCase().trim();
+        const matchDesc = (e.description || '').toLowerCase().includes(query);
+        const matchCat = (e.category || '').toLowerCase().includes(query);
+        const matchVendor = (e.recordedBy || '').toLowerCase().includes(query);
+        const matchPayment = (e.paymentMode || '').toLowerCase().includes(query);
+        const matchAmount = String(e.amount).includes(query);
+
+        // Date matching formats:
+        // - Raw ISO: "2026-11-14"
+        // - Formatted INR: "14-nov-2026"
+        // - Space separated: "14 nov 2026", "nov 14", "14 nov"
+        // - Numeric formats: "14/11/2026", "14-11-2026", "11/2026", "11-2026"
+        const rawDate = (e.date || '').toLowerCase();
+        const formattedDate = formatDateINR(e.date).toLowerCase();
+        const formattedSpace = formattedDate.replace(/-/g, ' ');
+        const formattedSlash = formattedDate.replace(/-/g, '/');
+
+        const dateParts = (e.date || '').split('-');
+        let numericSlash = '';
+        let numericDash = '';
+        let monthSlash = '';
+        let monthDash = '';
+        if (dateParts.length === 3) {
+          numericSlash = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+          numericDash = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+          monthSlash = `${dateParts[1]}/${dateParts[0]}`;
+          monthDash = `${dateParts[1]}-${dateParts[0]}`;
+        }
+
+        const matchDate =
+          rawDate.includes(query) ||
+          formattedDate.includes(query) ||
+          formattedSpace.includes(query) ||
+          formattedSlash.includes(query) ||
+          numericSlash.includes(query) ||
+          numericDash.includes(query) ||
+          monthSlash.includes(query) ||
+          monthDash.includes(query);
+
+        if (!matchDesc && !matchCat && !matchVendor && !matchPayment && !matchAmount && !matchDate) {
+          return false;
+        }
       }
 
-      // Category filter
+      // 3. Category filter
       if (categoryFilter !== 'ALL' && e.category !== categoryFilter) {
         return false;
       }
 
       return true;
     }).sort((a, b) => (b.date > a.date ? 1 : -1));
-  }, [expenses, selectedMonth, searchTerm, categoryFilter]);
+  }, [
+    expenses,
+    selectedMonth,
+    dateFilterMode,
+    specificDate,
+    startDate,
+    endDate,
+    searchTerm,
+    categoryFilter,
+    todayStr,
+    yesterdayStr
+  ]);
 
   // Aggregate stats for the current view
   const totalExpenseAmount = useMemo(() => {
@@ -126,7 +239,7 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
             <span className="text-xs text-slate-500 font-medium">Actions</span>
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900"
+              className="flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
@@ -142,14 +255,15 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
+      {/* Filter and Date-Wise Search Control Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+        {/* Row 1: Search by Text or Any Date format + Category Dropdown */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative flex-1 w-full sm:max-w-md">
+          <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search expense description, vendor, or item..."
+              placeholder="Search by date (e.g. 14 Nov, 2026-11-14, 14/11), category, vendor..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-8 py-2 focus:bg-white focus:ring-2 focus:ring-amber-600 focus:outline-hidden"
@@ -157,19 +271,20 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Category:</span>
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
-              className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden w-full sm:w-auto"
+              className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 focus:outline-hidden w-full sm:w-auto font-medium text-slate-700"
             >
               <option value="ALL">All Categories ({expenses.length})</option>
               {allCategories.map(cat => (
@@ -179,6 +294,202 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Row 2: Date Filter Pills */}
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mr-1">
+              <Calendar className="w-3 h-3 text-amber-700" />
+              <span>Date Filter:</span>
+            </span>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('MONTH');
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'MONTH'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Month ({selectedMonth === 'ALL' ? 'All' : selectedMonth})
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('TODAY');
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'TODAY'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Today
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('YESTERDAY');
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'YESTERDAY'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Yesterday
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('THIS_MONTH');
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'THIS_MONTH'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              This Month
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('SPECIFIC_DATE');
+                if (!specificDate) setSpecificDate(todayStr);
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'SPECIFIC_DATE'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Specific Date
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('DATE_RANGE');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'DATE_RANGE'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Date Range
+            </button>
+
+            <button
+              onClick={() => {
+                setDateFilterMode('ALL_TIME');
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                dateFilterMode === 'ALL_TIME'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              All Time
+            </button>
+          </div>
+
+          {isAnyFilterActive && (
+            <button
+              onClick={resetAllFilters}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-md transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+              title="Reset all search and date filters"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
+
+        {/* Row 3: Custom Date Inputs for Specific Date or Date Range */}
+        {dateFilterMode === 'SPECIFIC_DATE' && (
+          <div className="p-3 bg-amber-50/70 rounded-lg border border-amber-200 flex flex-wrap items-center gap-2.5 animate-fadeIn">
+            <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 text-amber-700" />
+              <span>Filter by Date:</span>
+            </span>
+            <input
+              type="date"
+              value={specificDate}
+              onChange={e => setSpecificDate(e.target.value)}
+              className="text-xs bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden font-mono text-slate-800"
+            />
+            {specificDate && (
+              <span className="text-xs text-amber-900 font-semibold">
+                Viewing expenses for: <span className="font-mono">{formatDateINR(specificDate)}</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {dateFilterMode === 'DATE_RANGE' && (
+          <div className="p-3 bg-amber-50/70 rounded-lg border border-amber-200 flex flex-wrap items-center gap-3 animate-fadeIn">
+            <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-amber-700" />
+              <span>Custom Date Range:</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-600 font-medium">From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="text-xs bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden font-mono text-slate-800"
+              />
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-amber-700 hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-600 font-medium">To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="text-xs bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 focus:outline-hidden font-mono text-slate-800"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Filter status readout */}
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium">
+              Showing <span className="font-bold text-slate-900">{filteredExpenses.length}</span> of {expenses.length} expenses
+            </span>
+            {isAnyFilterActive && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 font-semibold">
+                Filtered: {formatCurrencyINR(totalExpenseAmount)}
+              </span>
+            )}
+          </div>
+          {searchTerm.trim() && (
+            <span className="text-[10px] text-slate-400 italic">
+              Matching query &quot;{searchTerm}&quot;
+            </span>
+          )}
         </div>
       </div>
 
