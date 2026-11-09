@@ -58,8 +58,8 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [unitFilter, setUnitFilter] = useState('ALL');
   const [dateRangeFilter, setDateRangeFilter] = useState<'ALL' | 'THIS_MONTH' | 'CUSTOM_MONTH' | 'PENDING_BALANCE' | 'NEXT_MONTH' | 'UPCOMING'>('ALL');
-  const [sortField, setSortField] = useState<'srNo' | 'checkInDate' | 'totalAmount' | 'guestName'>('srNo');
-  const [sortAsc, setSortAsc] = useState<boolean>(false); // default descending (newest Sr No first)
+  const [sortField, setSortField] = useState<'srNo' | 'checkInDate' | 'totalAmount' | 'guestName'>('checkInDate');
+  const [sortAsc, setSortAsc] = useState<boolean>(true); // default ascending (chronological check-in date order)
 
   // Dedicated "Add Balance Amount" Modal State
   const [addBalanceBooking, setAddBalanceBooking] = useState<Booking | null>(null);
@@ -195,6 +195,21 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
       return true;
     }).sort((a, b) => {
+      // Check-in Date wise sorting (with secondary check-in time and srNo tiebreaker)
+      if (sortField === 'checkInDate') {
+        const dateA = a.checkInDate || '';
+        const dateB = b.checkInDate || '';
+        if (dateA !== dateB) {
+          return sortAsc ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+        }
+        const timeA = a.checkInTime || '13:00';
+        const timeB = b.checkInTime || '13:00';
+        if (timeA !== timeB) {
+          return sortAsc ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
+        }
+        return sortAsc ? (a.srNo || 0) - (b.srNo || 0) : (b.srNo || 0) - (a.srNo || 0);
+      }
+
       let valA: any = a[sortField];
       let valB: any = b[sortField];
       if (sortField === 'srNo' || sortField === 'totalAmount') {
@@ -224,7 +239,8 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      setSortAsc(field === 'guestName');
+      // For checkInDate and guestName, default to ascending; for numbers (srNo, totalAmount) default descending
+      setSortAsc(field === 'checkInDate' || field === 'guestName');
     }
   };
 
@@ -822,8 +838,33 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </select>
           </div>
 
-          <div className="ml-auto text-slate-500 text-[11px] font-medium">
-            Showing <strong className="text-slate-900">{filteredBookings.length}</strong> of {bookings.length} reservations
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium whitespace-nowrap">Sort:</span>
+            <select
+              value={`${sortField}_${sortAsc ? 'asc' : 'desc'}`}
+              onChange={e => {
+                const [f, d] = e.target.value.split('_');
+                setSortField(f as any);
+                setSortAsc(d === 'asc');
+              }}
+              className="text-xs bg-emerald-50 border border-emerald-300 rounded-md px-2 py-1 focus:outline-hidden font-bold text-emerald-950 cursor-pointer"
+            >
+              <option value="checkInDate_asc">📅 Check-in Date (Earliest First ⬆)</option>
+              <option value="checkInDate_desc">📅 Check-in Date (Latest First ⬇)</option>
+              <option value="srNo_desc">🔢 Booking # (Newest First)</option>
+              <option value="srNo_asc">🔢 Booking # (Oldest First)</option>
+              <option value="guestName_asc">👤 Guest Name (A - Z)</option>
+              <option value="totalAmount_desc">💰 Total Amount (Highest First)</option>
+            </select>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2 text-slate-500 text-[11px] font-medium flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-[10px]">
+              <span>Arranged: {sortField === 'checkInDate' ? (sortAsc ? 'Check-in (Earliest)' : 'Check-in (Latest)') : sortField}</span>
+            </span>
+            <span>
+              Showing <strong className="text-slate-900">{filteredBookings.length}</strong> of {bookings.length} reservations
+            </span>
           </div>
         </div>
 
@@ -1121,11 +1162,19 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                 <th className="py-3 px-3 text-center">Pax</th>
                 <th
                   onClick={() => handleSort('checkInDate')}
-                  className="py-3 px-3 cursor-pointer hover:bg-slate-100 transition-colors"
+                  className={`py-3 px-3 cursor-pointer transition-colors ${
+                    sortField === 'checkInDate' ? 'bg-emerald-50 text-emerald-950 font-bold' : 'hover:bg-slate-100'
+                  }`}
+                  title="Click to toggle Check-in Date order (earliest / latest)"
                 >
                   <div className="flex items-center gap-1">
-                    <span>Stay Period</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    <span>Check-in Date</span>
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === 'checkInDate' ? 'text-emerald-700' : 'text-slate-400'}`} />
+                    {sortField === 'checkInDate' && (
+                      <span className="text-[10px] text-emerald-800 font-bold font-mono">
+                        {sortAsc ? '▲' : '▼'}
+                      </span>
+                    )}
                   </div>
                 </th>
                 <th className="py-3 px-2 text-center">Nights</th>
