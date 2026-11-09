@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings, UserProfile } from '../../types';
 import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr } from '../../utils/formatters';
+import { getUnitColorScheme } from '../../utils/unitColors';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -939,7 +940,15 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                   <div className="mt-3 bg-white/75 rounded-lg p-2.5 border border-black/10 grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">Unit Allotted</span>
-                      <span className="font-bold text-slate-900">{b.unitAllotted}</span>
+                      {(() => {
+                        const uc = getUnitColorScheme(b.unitAllotted, settings.units);
+                        return (
+                          <div className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold border ${uc.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${uc.dot}`} />
+                            <span className="truncate">{b.unitAllotted}</span>
+                          </div>
+                        );
+                      })()}
                       <span className="text-[10px] text-slate-600 block mt-0.5 font-mono">
                         {(b.adults || 0) + (b.children || 0) === 0 ? '0 Guests' : `${b.adults ?? 0} Adults${(b.children || 0) > 0 ? ` + ${b.children} Kids` : ''}`}
                       </span>
@@ -1215,9 +1224,15 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
                       {/* Unit Allotted */}
                       <td className="py-2.5 px-3">
-                        <span className="font-semibold text-slate-900">
-                          {b.unitAllotted}
-                        </span>
+                        {(() => {
+                          const uc = getUnitColorScheme(b.unitAllotted, settings.units);
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${uc.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${uc.dot}`} />
+                              <span>{b.unitAllotted}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Pax (Adults + Kids) */}

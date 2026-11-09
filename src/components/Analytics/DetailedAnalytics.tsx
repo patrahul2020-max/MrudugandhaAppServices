@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Booking, Expense, PropertySettings } from '../../types';
 import { formatCurrencyINR, formatDateINR } from '../../utils/formatters';
+import { getUnitColorScheme } from '../../utils/unitColors';
 
 interface DetailedAnalyticsProps {
   bookings: Booking[];
@@ -234,27 +235,33 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
           </div>
 
           <div className="space-y-3">
-            {unitStats.map(unit => (
-              <div key={unit.unitName} className="space-y-1.5 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-slate-800">{unit.unitName}</span>
-                  <span className="font-mono font-bold text-slate-900">{formatCurrencyINR(unit.revenue)}</span>
-                </div>
+            {unitStats.map(unit => {
+              const uc = getUnitColorScheme(unit.unitName, settings.units);
+              return (
+                <div key={unit.unitName} className="space-y-1.5 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${uc.dot}`} />
+                      <span className="font-semibold text-slate-800 truncate">{unit.unitName}</span>
+                    </div>
+                    <span className="font-mono font-bold text-slate-900 shrink-0">{formatCurrencyINR(unit.revenue)}</span>
+                  </div>
 
-                {/* Progress bar */}
-                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-sky-700 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.max(4, unit.occupancyRate)}%` }}
-                  />
-                </div>
+                  {/* Progress bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${uc.dot}`}
+                      style={{ width: `${Math.max(4, unit.occupancyRate)}%` }}
+                    />
+                  </div>
 
-                <div className="flex justify-between text-[11px] text-slate-500">
-                  <span>{unit.nights} nights booked · {unit.bookingsCount} stays</span>
-                  <span className="font-semibold text-sky-900 font-mono">{unit.occupancyRate}% occupancy</span>
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>{unit.nights} nights booked · {unit.bookingsCount} stays</span>
+                    <span className="font-semibold text-slate-700 font-mono">{unit.occupancyRate}% occupancy</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

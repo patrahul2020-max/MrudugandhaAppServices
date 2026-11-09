@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Booking, PropertySettings } from '../../types';
 import { formatDateINR, formatCurrencyINR } from '../../utils/formatters';
+import { getUnitColorScheme } from '../../utils/unitColors';
 
 interface MonthlyCalendarModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
   onNewBooking,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState<string>('ALL');
 
   // Normalize month value (default to 2026-11 if ALL)
   const currentMonth = useMemo(() => {
@@ -268,6 +270,66 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
 
         {/* Calendar Body */}
         <div className="p-3 sm:p-5 overflow-y-auto flex-1">
+          {/* Distinct Area / Unit Color Legend & Filter Strip */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 mb-3.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto text-xs no-scrollbar">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+                <BedDouble className="w-3.5 h-3.5 text-amber-700" />
+                <span>Areas Allotted:</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setSelectedUnitFilter('ALL')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all shrink-0 cursor-pointer ${
+                  selectedUnitFilter === 'ALL'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                All Areas ({validBookings.length})
+              </button>
+
+              {activeUnits.map(unit => {
+                const scheme = getUnitColorScheme(unit.name, activeUnits);
+                const count = validBookings.filter(b => b.unitAllotted === unit.name).length;
+                const isSelected = selectedUnitFilter === unit.name;
+
+                return (
+                  <button
+                    key={unit.id}
+                    type="button"
+                    onClick={() => setSelectedUnitFilter(isSelected ? 'ALL' : unit.name)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      isSelected
+                        ? `${scheme.badge} ring-2 ring-offset-1 ring-slate-400 font-bold shadow-2xs`
+                        : `${scheme.badge} hover:opacity-100`
+                    }`}
+                    title={`Click to filter only ${unit.name} entries`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${scheme.dot} shrink-0`} />
+                    <span>{unit.name}</span>
+                    <span className="text-[10px] opacity-75 font-mono">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedUnitFilter !== 'ALL' && (
+              <div className="mt-1.5 text-[11px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-200/60">
+                <span>
+                  Filtering only <strong className="text-slate-900">{selectedUnitFilter}</strong> bookings
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUnitFilter('ALL')}
+                  className="text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                >
+                  Show All Areas
+                </button>
+              </div>
+            )}
+          </div>
+
           {viewMode === 'grid' ? (
             <div>
               {/* Day of Week Header */}
@@ -333,25 +395,35 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
                       )}
                     </div>
 
-                    {/* Bookings Chips List inside Day Cell */}
-                    <div className="space-y-1 my-1 overflow-y-auto max-h-[60px] no-scrollbar">
-                      {day.activeBookings.map(b => (
-                        <div
-                          key={b.id}
-                          onClick={() => {
-                            if (onEditBooking) {
-                              onEditBooking(b);
-                            }
-                          }}
-                          className="px-1 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded text-[9px] sm:text-[10px] font-medium truncate cursor-pointer transition-colors border border-emerald-300/80 flex items-center justify-between gap-0.5"
-                          title={`${b.guestName} (${b.unitAllotted}) - Click to view/edit`}
-                        >
-                          <span className="truncate font-semibold">{b.guestName}</span>
-                          <span className="text-[8px] text-emerald-800 opacity-80 shrink-0 hidden sm:inline">
-                            {b.unitAllotted.split(' ')[0]}
-                          </span>
-                        </div>
-                      ))}
+                    {/* Bookings Chips List inside Day Cell with Distinct Area Colors */}
+                    <div className="space-y-1 my-1 overflow-y-auto max-h-[64px] no-scrollbar">
+                      {day.activeBookings.map(b => {
+                        const scheme = getUnitColorScheme(b.unitAllotted, activeUnits);
+                        const isMatch = selectedUnitFilter === 'ALL' || b.unitAllotted === selectedUnitFilter;
+
+                        return (
+                          <div
+                            key={b.id}
+                            onClick={() => {
+                              if (onEditBooking) {
+                                onEditBooking(b);
+                              }
+                            }}
+                            className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium truncate cursor-pointer transition-all border flex items-center justify-between gap-1 ${
+                              scheme.gridChip
+                            } ${isMatch ? 'opacity-100 scale-100' : 'opacity-25 grayscale scale-95'}`}
+                            title={`${b.guestName} · ${b.unitAllotted} (${formatDateINR(b.checkInDate)} to ${formatDateINR(b.checkOutDate)}) - Click to edit`}
+                          >
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${scheme.dot}`} />
+                              <span className="truncate font-bold">{b.guestName}</span>
+                            </div>
+                            <span className={`text-[8px] font-extrabold uppercase shrink-0 px-1 py-0.2 rounded bg-white/80 ${scheme.gridSubtext} hidden sm:inline`}>
+                              {b.unitAllotted.split(' ')[0]}
+                            </span>
+                          </div>
+                        );
+                      })}
 
                       {day.occupiedCount === 0 && (
                         <div className="text-[9px] text-slate-300 text-center py-1 hidden sm:block">
@@ -381,7 +453,7 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
               </div>
             </div>
           ) : (
-            /* Timeline / Matrix View: Units by Day */
+            /* Timeline / Matrix View: Units by Day with matching Area Colors */
             <div className="overflow-x-auto max-w-full">
               <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
                 <thead className="bg-slate-100 text-slate-700 font-semibold text-[11px] uppercase tracking-wider">
@@ -406,11 +478,22 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
                   {activeUnits.map(unit => {
+                    const unitScheme = getUnitColorScheme(unit.name, activeUnits);
+                    const isRowFiltered = selectedUnitFilter !== 'ALL' && selectedUnitFilter !== unit.name;
+
                     return (
-                      <tr key={unit.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-200">
-                          <div>{unit.name}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">
+                      <tr
+                        key={unit.id}
+                        className={`hover:bg-slate-50 transition-colors ${
+                          isRowFiltered ? 'opacity-30' : ''
+                        }`}
+                      >
+                        <td className={`py-2.5 px-3 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-200 border-l-4 ${unitScheme.borderAccent}`}>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${unitScheme.dot}`} />
+                            <span className="truncate">{unit.name}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono pl-3.5">
                             {formatCurrencyINR(unit.baseRatePerNight)}/nt
                           </div>
                         </td>
@@ -432,8 +515,8 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
                                   onClick={() => {
                                     if (onEditBooking) onEditBooking(bookingForUnit);
                                   }}
-                                  className="h-8 rounded bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center text-[9px] font-bold cursor-pointer transition-colors px-1"
-                                  title={`${bookingForUnit.guestName} (${formatDateINR(bookingForUnit.checkInDate)} - ${formatDateINR(bookingForUnit.checkOutDate)})`}
+                                  className={`h-8 rounded ${unitScheme.timelineBar} flex items-center justify-center text-[9px] font-bold cursor-pointer transition-colors px-1 shadow-2xs`}
+                                  title={`${bookingForUnit.guestName} (${formatDateINR(bookingForUnit.checkInDate)} - ${formatDateINR(bookingForUnit.checkOutDate)}) - Area: ${unit.name}`}
                                 >
                                   <span className="truncate">{bookingForUnit.guestName.split(' ')[0]}</span>
                                 </div>
@@ -454,16 +537,31 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-slate-50 border-t border-slate-200 p-3 sm:px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="inline-block w-3 h-3 rounded bg-emerald-600"></span>
-            <span>Booked Stays</span>
-            <span className="inline-block w-3 h-3 rounded bg-amber-300 ml-2"></span>
-            <span>Today's Date</span>
+        {/* Footer with Distinct Area Color Codes */}
+        <div className="bg-slate-50 border-t border-slate-200 p-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Area Colors:</span>
+            {activeUnits.map(u => {
+              const sch = getUnitColorScheme(u.name, activeUnits);
+              return (
+                <span
+                  key={u.id}
+                  onClick={() => setSelectedUnitFilter(selectedUnitFilter === u.name ? 'ALL' : u.name)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 mr-1.5 cursor-pointer hover:text-slate-900"
+                  title={`Filter by ${u.name}`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full ${sch.dot}`} />
+                  <span>{u.name}</span>
+                </span>
+              );
+            })}
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 ml-1">
+              <span className="w-2.5 h-2.5 rounded bg-amber-400 border border-amber-500" />
+              <span>Today</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
             {onNewBooking && (
               <button
                 type="button"
