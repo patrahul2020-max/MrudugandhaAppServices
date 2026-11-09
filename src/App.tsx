@@ -402,7 +402,7 @@ export default function App() {
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
       />
 
-      {/* Analytics Overview Top KPI Cards (Always visible on Bookings, Expenses and Analytics tabs) */}
+      {/* Analytics Overview Top KPI Cards with Active Interactive Calendar */}
       {currentTab !== 'settings' && (
         <AnalyticsOverview
           bookings={bookings}
@@ -410,6 +410,14 @@ export default function App() {
           settings={settings}
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
+          onEditBooking={b => {
+            setBookingToEdit(b);
+            setIsBookingModalOpen(true);
+          }}
+          onNewBooking={() => {
+            setBookingToEdit(null);
+            setIsBookingModalOpen(true);
+          }}
         />
       )}
 
