@@ -41,17 +41,17 @@ export const PRESET_UNIT_PALETTES: UnitColorScheme[] = [
     timelineBar: 'bg-blue-600 hover:bg-blue-700 text-white',
     borderAccent: 'border-l-blue-600',
   },
-  // 2. First Floor - Vibrant Teal
+  // 2. First Floor - Vibrant Fuchsia / Berry
   {
-    key: 'teal',
+    key: 'fuchsia',
     name: 'First Floor',
-    hex: '#0d9488',
-    dot: 'bg-teal-600',
-    badge: 'bg-teal-50 text-teal-900 border-teal-200',
-    gridChip: 'bg-teal-100 hover:bg-teal-200 text-teal-950 border-teal-300/90 shadow-2xs',
-    gridSubtext: 'text-teal-800',
-    timelineBar: 'bg-teal-600 hover:bg-teal-700 text-white',
-    borderAccent: 'border-l-teal-600',
+    hex: '#c026d3',
+    dot: 'bg-fuchsia-600',
+    badge: 'bg-fuchsia-50 text-fuchsia-900 border-fuchsia-200',
+    gridChip: 'bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 border-fuchsia-300/90 shadow-2xs',
+    gridSubtext: 'text-fuchsia-800',
+    timelineBar: 'bg-fuchsia-600 hover:bg-fuchsia-700 text-white',
+    borderAccent: 'border-l-fuchsia-600',
   },
   // 3. Cottage 1 - Warm Amber
   {
@@ -155,7 +155,7 @@ export function getUnitColorScheme(unitName?: string | null, activeUnits?: { nam
     return PRESET_UNIT_PALETTES[1]; // Blue
   }
   if (normalized.includes('first floor') || normalized === 'ff' || normalized.includes('first')) {
-    return PRESET_UNIT_PALETTES[2]; // Teal
+    return PRESET_UNIT_PALETTES[2]; // Fuchsia
   }
   if (normalized.includes('cottage 1') || normalized.includes('cottage-1')) {
     return PRESET_UNIT_PALETTES[3]; // Amber
