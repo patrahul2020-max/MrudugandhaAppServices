@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Home, Calendar, ReceiptText, BarChart3, Settings, Cloud, ChevronDown, Smartphone, ShieldCheck } from 'lucide-react';
+import { Home, Calendar, ReceiptText, BarChart3, Settings, Cloud, ChevronDown, Smartphone, ShieldCheck, FolderArchive } from 'lucide-react';
 import { PropertySettings } from '../types';
 import { UserProfile, CLOUD_USERS, ConnectedDevice } from '../utils/api';
 import { PWAInstallButton } from './Common/PWAInstallBanner';
 
 interface HeaderProps {
-  currentTab: 'bookings' | 'expenses' | 'analytics' | 'settings';
-  setCurrentTab: (tab: 'bookings' | 'expenses' | 'analytics' | 'settings') => void;
+  currentTab: 'bookings' | 'expenses' | 'analytics' | 'documents' | 'settings';
+  setCurrentTab: (tab: 'bookings' | 'expenses' | 'analytics' | 'documents' | 'settings') => void;
   settings: PropertySettings;
   bookingCount: number;
   activeUser: UserProfile;
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Nav Links: 4 clean single-line navigation buttons */}
+          {/* Nav Links: 5 clean single-line navigation buttons */}
           <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => setCurrentTab('bookings')}
@@ -90,6 +90,17 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <BarChart3 className="w-4 h-4 text-sky-700" />
               Financials & Occupancy
+            </button>
+            <button
+              onClick={() => setCurrentTab('documents')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                currentTab === 'documents'
+                  ? 'bg-white text-emerald-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FolderArchive className="w-4 h-4 text-emerald-700" />
+              Document Vault
             </button>
             <button
               onClick={() => setCurrentTab('settings')}
@@ -227,10 +238,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Mobile Navigation Row: Touch-friendly 44px hitbox, evenly distributed */}
-        <div className="md:hidden grid grid-cols-4 border-t border-slate-100 py-1 bg-white">
+        <div className="md:hidden grid grid-cols-5 border-t border-slate-100 py-1 bg-white">
           <button
             onClick={() => setCurrentTab('bookings')}
-            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
               currentTab === 'bookings' ? 'text-emerald-900 font-bold bg-emerald-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -239,7 +250,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
           <button
             onClick={() => setCurrentTab('expenses')}
-            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
               currentTab === 'expenses' ? 'text-amber-900 font-bold bg-amber-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -248,7 +259,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
           <button
             onClick={() => setCurrentTab('analytics')}
-            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
               currentTab === 'analytics' ? 'text-sky-900 font-bold bg-sky-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -256,8 +267,17 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Financials</span>
           </button>
           <button
+            onClick={() => setCurrentTab('documents')}
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
+              currentTab === 'documents' ? 'text-emerald-900 font-bold bg-emerald-50/60 rounded-lg' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FolderArchive className={`w-4 h-4 ${currentTab === 'documents' ? 'text-emerald-700' : 'text-slate-500'}`} />
+            <span>Vault</span>
+          </button>
+          <button
             onClick={() => setCurrentTab('settings')}
-            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
               currentTab === 'settings' ? 'text-slate-900 font-bold bg-slate-100 rounded-lg' : 'text-slate-600 hover:text-slate-900'
             }`}
           >

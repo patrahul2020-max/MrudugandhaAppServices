@@ -1,8 +1,9 @@
-import { Booking, Expense, PropertySettings, UnitConfig } from '../types';
+import { Booking, Expense, PropertySettings, UnitConfig, StoredDocument } from '../types';
 
 const STORAGE_KEY_BOOKINGS = 'atithi_bookings_v1';
 const STORAGE_KEY_EXPENSES = 'atithi_expenses_v1';
 const STORAGE_KEY_SETTINGS = 'atithi_settings_v1';
+const STORAGE_KEY_DOCUMENTS = 'atithi_documents_v1';
 
 export const DEFAULT_UNITS: UnitConfig[] = [
   { id: 'unit_full_villa', name: 'Full Villa', baseRatePerNight: 15000, baseCapacity: 10, extraAdultRate: 1000, extraChildRate: 500, isActive: true },
@@ -221,5 +222,24 @@ export function resetToDemoData(): void {
   saveBookings(INITIAL_BOOKINGS);
   saveExpenses(INITIAL_EXPENSES);
   saveSettings(DEFAULT_SETTINGS);
+}
+
+export function loadDocuments(): StoredDocument[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_DOCUMENTS);
+    if (!data) return [];
+    return JSON.parse(data) || [];
+  } catch (err) {
+    console.error('Failed to load documents from localStorage', err);
+    return [];
+  }
+}
+
+export function saveDocuments(documents: StoredDocument[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_DOCUMENTS, JSON.stringify(documents));
+  } catch (err) {
+    console.error('Failed to save documents to localStorage', err);
+  }
 }
 

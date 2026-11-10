@@ -14,7 +14,8 @@ import { ExpensesTable } from './components/Expenses/ExpensesTable';
 import { ExpenseModal } from './components/Expenses/ExpenseModal';
 import { DetailedAnalytics } from './components/Analytics/DetailedAnalytics';
 import { SettingsModal } from './components/Settings/SettingsModal';
-import { Booking, Expense, PropertySettings, CheckInStatus, BalanceStatus } from './types';
+import { DocumentsVault } from './components/Documents/DocumentsVault';
+import { Booking, Expense, PropertySettings, CheckInStatus, BalanceStatus, StoredDocument } from './types';
 import {
   loadBookings,
   saveBookings,
@@ -22,6 +23,8 @@ import {
   saveExpenses,
   loadSettings,
   saveSettings,
+  loadDocuments,
+  saveDocuments,
   resetToDemoData,
   DEFAULT_SETTINGS
 } from './utils/storage';
@@ -43,6 +46,9 @@ import {
   saveCloudExpense,
   deleteCloudExpense,
   saveCloudSettings,
+  fetchCloudDocuments,
+  saveCloudDocument,
+  deleteCloudDocument,
   batchSyncCloud
 } from './utils/api';
 import { DeviceConnectModal } from './components/MultiUser/DeviceConnectModal';
@@ -52,6 +58,7 @@ import { BackupModal } from './components/Common/BackupModal';
 export default function App() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [settings, setSettings] = useState<PropertySettings>(DEFAULT_SETTINGS);
   const [activeUser, setActiveUserState] = useState<UserProfile>(getActiveUser());
   const [cloudUsers, setCloudUsers] = useState<UserProfile[]>(CLOUD_USERS);
@@ -59,7 +66,7 @@ export default function App() {
   const [isDeviceConnectModalOpen, setIsDeviceConnectModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
 
-  const [currentTab, setCurrentTab] = useState<'bookings' | 'expenses' | 'analytics' | 'settings'>('bookings');
+  const [currentTab, setCurrentTab] = useState<'bookings' | 'expenses' | 'analytics' | 'documents' | 'settings'>('bookings');
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-11');
 
   // Cloud database version tracking
@@ -129,13 +136,23 @@ export default function App() {
     const localB = loadBookings();
     const localE = loadExpenses();
     const localS = loadSettings();
+    const localD = loadDocuments();
     setBookings(localB);
     setExpenses(localE);
     setSettings(localS);
+    setDocuments(localD);
 
     // Initial fetch of users roster
     fetchCloudUsers().then(users => {
       if (users && users.length > 0) setCloudUsers(users);
+    });
+
+    // Initial fetch of cloud documents
+    fetchCloudDocuments().then(cloudDocs => {
+      if (cloudDocs && Array.isArray(cloudDocs)) {
+        setDocuments(cloudDocs);
+        saveDocuments(cloudDocs);
+      }
     });
 
     // Initial fetch of cloud data (continuous persistence on every new login)
@@ -149,6 +166,10 @@ export default function App() {
         if (Array.isArray(cloudData.expenses)) {
           setExpenses(cloudData.expenses);
           saveExpenses(cloudData.expenses);
+        }
+        if (Array.isArray(cloudData.documents)) {
+          setDocuments(cloudData.documents);
+          saveDocuments(cloudData.documents);
         }
 
         if (cloudData.settings && cloudData.settings.propertyName) {
@@ -177,6 +198,10 @@ export default function App() {
             setExpenses(event.data.expenses);
             saveExpenses(event.data.expenses);
           }
+          if (event.data.documents) {
+            setDocuments(event.data.documents);
+            saveDocuments(event.data.documents);
+          }
           if (event.data.settings) {
             setSettings(event.data.settings);
             saveSettings(event.data.settings);
@@ -197,6 +222,12 @@ export default function App() {
           } else if (event.type === 'expense') {
             if (event.action === 'created') {
               showToast(`⚡ New expense (₹${event.data.expenses[0]?.amount || ''}) added by ${event.modifiedBy}`);
+            }
+          } else if (event.type === 'document') {
+            if (event.action === 'created') {
+              showToast(`⚡ Document "${event.title || 'File'}" saved to vault`);
+            } else if (event.action === 'deleted') {
+              showToast(`⚡ Document removed from vault`);
             }
           } else if (event.type === 'backup_restored') {
             showToast('✓ Cloud database successfully restored from backup snapshot!');
@@ -239,6 +270,10 @@ export default function App() {
         if (updateCheck.data.expenses) {
           setExpenses(updateCheck.data.expenses);
           saveExpenses(updateCheck.data.expenses);
+        }
+        if (updateCheck.data.documents) {
+          setDocuments(updateCheck.data.documents);
+          saveDocuments(updateCheck.data.documents);
         }
         if (updateCheck.data.settings) {
           setSettings(updateCheck.data.settings);
@@ -405,6 +440,33 @@ export default function App() {
     batchSyncCloud(data.bookings || bookings, data.expenses || expenses, data.settings || settings);
   };
 
+  // Document Vault Handlers (Common space for client documents, slips, and invoices)
+  const handleSaveDocument = async (doc: StoredDocument) => {
+    try {
+      const existing = documents.filter(d => d.id !== doc.id);
+      const updated = [doc, ...existing];
+      setDocuments(updated);
+      saveDocuments(updated);
+      await saveCloudDocument(doc, activeUser);
+      showToast(`✓ Document "${doc.title}" saved to Common Vault`);
+    } catch (err: any) {
+      console.error('Error saving document:', err);
+      showToast('Document saved locally');
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    try {
+      const updated = documents.filter(d => d.id !== docId);
+      setDocuments(updated);
+      saveDocuments(updated);
+      await deleteCloudDocument(docId);
+      showToast('Document deleted from vault');
+    } catch (err: any) {
+      console.error('Error deleting document:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       {/* 1-Click Mobile Phone Installation Banner (Suppressed when already running as installed PWA) */}
@@ -425,7 +487,7 @@ export default function App() {
       />
 
       {/* Analytics Overview Top KPI Cards with Active Interactive Calendar */}
-      {currentTab !== 'settings' && (
+      {currentTab !== 'settings' && currentTab !== 'documents' && (
         <AnalyticsOverview
           bookings={bookings}
           expenses={expenses}
@@ -489,6 +551,16 @@ export default function App() {
             expenses={expenses}
             settings={settings}
             selectedMonth={selectedMonth}
+          />
+        )}
+
+        {currentTab === 'documents' && (
+          <DocumentsVault
+            documents={documents}
+            bookings={bookings}
+            activeUser={activeUser}
+            onSaveDocument={handleSaveDocument}
+            onDeleteDocument={handleDeleteDocument}
           />
         )}
 
@@ -560,6 +632,8 @@ export default function App() {
         onClose={() => setCheckInSlipBooking(null)}
         booking={checkInSlipBooking}
         settings={settings}
+        activeUser={activeUser}
+        onDocumentSaved={handleSaveDocument}
       />
 
       <InvoiceModal
@@ -567,6 +641,8 @@ export default function App() {
         onClose={() => setInvoiceBooking(null)}
         booking={invoiceBooking}
         settings={settings}
+        activeUser={activeUser}
+        onDocumentSaved={handleSaveDocument}
       />
 
       {/* Multi-User Cloud & Device Connect Modal */}

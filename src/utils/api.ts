@@ -4,8 +4,8 @@
  * active device presence, and multi-user role rosters.
  */
 
-import { Booking, Expense, PropertySettings, UserProfile } from '../types';
-export type { UserProfile };
+import { Booking, Expense, PropertySettings, UserProfile, StoredDocument } from '../types';
+export type { UserProfile, StoredDocument };
 
 export interface ConnectedDevice {
   deviceId: string;
@@ -79,6 +79,7 @@ export function setActiveUser(user: UserProfile): void {
 export interface CloudSyncResponse {
   bookings: Booking[];
   expenses: Expense[];
+  documents?: StoredDocument[];
   settings: PropertySettings;
   users: UserProfile[];
   version: number;
@@ -89,6 +90,7 @@ export interface CloudUpdateEvent {
   action?: string;
   bookingId?: string;
   guestName?: string;
+  title?: string;
   modifiedBy?: string;
   version: number;
   data: CloudSyncResponse;
@@ -330,3 +332,45 @@ export async function batchSyncCloud(bookings: Booking[], expenses: Expense[], s
     console.warn('Batch cloud sync skipped:', err);
   }
 }
+
+export async function fetchCloudDocuments(): Promise<StoredDocument[]> {
+  try {
+    const res = await fetch('/api/documents');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.documents || [];
+  } catch (err) {
+    console.warn('Failed to fetch cloud documents:', err);
+    return [];
+  }
+}
+
+export async function saveCloudDocument(doc: StoredDocument, activeUser?: UserProfile): Promise<boolean> {
+  try {
+    const deviceType = getDeviceType();
+    const payload = {
+      ...doc,
+      uploadedBy: doc.uploadedBy || (activeUser ? `${activeUser.name} (${activeUser.role} • ${deviceType})` : 'Staff'),
+    };
+    const res = await fetch('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('Failed to save cloud document:', err);
+    return false;
+  }
+}
+
+export async function deleteCloudDocument(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+    return res.ok;
+  } catch (err) {
+    console.error('Failed to delete cloud document:', err);
+    return false;
+  }
+}
+

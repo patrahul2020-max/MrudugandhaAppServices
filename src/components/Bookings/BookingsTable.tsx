@@ -1132,6 +1132,9 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                       <span className="text-[11px] text-slate-600 block">
                         to {formatDateINR(b.checkOutDate)}
                       </span>
+                      <span className="text-[10px] text-slate-600 block mt-0.5">
+                        Booked: <span className="font-semibold text-emerald-950">{formatDateINR(b.bookingDate)}</span>
+                      </span>
                     </div>
                   </div>
 
@@ -1433,6 +1436,9 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                         </div>
                         <div className="text-[11px] text-slate-500">
                           to {formatDateINR(b.checkOutDate)}
+                        </div>
+                        <div className="text-[10px] text-slate-600 mt-0.5" title="Actual Date of Booking">
+                          Booked: <span className="font-semibold text-emerald-950">{formatDateINR(b.bookingDate)}</span>
                         </div>
                       </td>
 

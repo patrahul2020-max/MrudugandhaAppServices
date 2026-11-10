@@ -1,14 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { X, Printer, Download, Building, CheckCircle2, Loader2 } from 'lucide-react';
-import { Booking, PropertySettings } from '../../types';
+import { X, Printer, Share2, Building, CheckCircle2, Loader2, FolderCheck } from 'lucide-react';
+import { Booking, PropertySettings, UserProfile, StoredDocument } from '../../types';
 import { formatDateINR, formatCurrencyINR, formatTime12Hr } from '../../utils/formatters';
-import { generatePdfFromElement } from '../../utils/pdfGenerator';
+import { generateAndSavePdf } from '../../utils/documentVault';
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: Booking | null;
   settings: PropertySettings;
+  activeUser?: UserProfile;
+  onDocumentSaved?: (doc: StoredDocument) => void;
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({
@@ -16,8 +18,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   onClose,
   booking,
   settings,
+  activeUser,
+  onDocumentSaved,
 }) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [vaultSavedMessage, setVaultSavedMessage] = useState<string | null>(null);
   const invoiceContentRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen || !booking) return null;
@@ -31,13 +36,25 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const roomBaseCharge = Math.max(0, booking.totalAmount - (booking.serviceCharges || 0));
   const perNightRate = Math.round(roomBaseCharge / stayDays);
 
-  const handleSavePdf = async () => {
+  const handleShareAndSavePdf = async () => {
     if (!invoiceContentRef.current) return;
     try {
       setIsGeneratingPdf(true);
-      const cleanGuest = booking.guestName.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `Mrudugandha_Tax_Invoice_${invoiceNumber}_${cleanGuest}.pdf`;
-      await generatePdfFromElement(invoiceContentRef.current, filename);
+      setVaultSavedMessage(null);
+      const result = await generateAndSavePdf(invoiceContentRef.current, {
+        booking,
+        documentType: 'Invoice',
+        activeUser,
+        autoShare: true,
+      });
+
+      if (result.success) {
+        setVaultSavedMessage('Saved to Document Vault ✓');
+        if (onDocumentSaved) {
+          onDocumentSaved(result.doc);
+        }
+        setTimeout(() => setVaultSavedMessage(null), 4000);
+      }
     } catch (err) {
       console.error('Invoice PDF generation error:', err);
       window.print();
@@ -59,6 +76,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {vaultSavedMessage && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold animate-pulse">
+                <FolderCheck className="w-3.5 h-3.5" />
+                {vaultSavedMessage}
+              </span>
+            )}
+
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-slate-700 shadow-xs"
@@ -69,20 +93,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             </button>
 
             <button
-              onClick={handleSavePdf}
+              onClick={handleShareAndSavePdf}
               disabled={isGeneratingPdf}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
-              title="Download official PDF invoice"
+              title="Generate PDF, share with guest, and simultaneously save to Document Vault"
             >
               {isGeneratingPdf ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving PDF...</span>
+                  <span>Generating PDF...</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Save PDF</span>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share & Save PDF</span>
                 </>
               )}
             </button>
@@ -131,9 +155,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
             <div className="text-right shrink-0">
               <span className="text-xl font-black text-slate-900 tracking-wider block">INVOICE</span>
-              <div className="text-xs font-mono font-bold text-emerald-800 mt-1">{invoiceNumber}</div>
-              <div className="text-xs text-slate-500 mt-1">Date: {formatDateINR(new Date().toISOString())}</div>
-              <div className="text-xs text-slate-500 font-medium mt-0.5">
+              <div className="text-xs font-mono font-bold text-emerald-800 mt-0.5">{invoiceNumber}</div>
+              <div className="text-xs text-slate-500 mt-1">Invoice Date: {formatDateINR(new Date().toISOString())}</div>
+              <div className="mt-1 inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 border border-emerald-300 rounded text-emerald-950 font-bold text-xs shadow-2xs">
+                <span className="text-[10px] uppercase font-semibold text-emerald-700">Booking Date:</span>
+                <span>{formatDateINR(booking.bookingDate)}</span>
+              </div>
+              <div className="text-xs text-slate-500 font-medium mt-1">
                 Channel: <span className="font-semibold text-slate-800">{booking.referralSource}</span>
               </div>
             </div>
@@ -162,6 +190,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               <div className="font-bold text-slate-900">{booking.unitAllotted}</div>
               <div className="text-slate-700 font-medium mt-0.5">
                 {formatDateINR(booking.checkInDate)} to {formatDateINR(booking.checkOutDate)}
+              </div>
+              <div className="text-slate-800 font-semibold mt-0.5">
+                Booking Date: <span className="font-bold text-emerald-950">{formatDateINR(booking.bookingDate)}</span>
               </div>
               <div className="text-slate-500 font-medium mt-0.5">
                 Duration: <span className="font-bold text-slate-800">{stayDays} Night{stayDays > 1 ? 's' : ''}</span> · {(booking.adults || 0) + (booking.children || 0) + (booking.infants || 0) === 0 ? '0 Guests' : `${booking.adults ?? 0} Adults${(booking.children || 0) > 0 ? ` + ${booking.children} Kids` : ''}${booking.infants ? ` + ${booking.infants} <5y` : ''}`}

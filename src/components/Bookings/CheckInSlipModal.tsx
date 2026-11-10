@@ -1,14 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { X, Printer, Copy, Check, Download, ShieldCheck, Loader2 } from 'lucide-react';
-import { Booking, PropertySettings } from '../../types';
+import { X, Printer, Copy, Check, Share2, ShieldCheck, Loader2, FolderCheck } from 'lucide-react';
+import { Booking, PropertySettings, UserProfile, StoredDocument } from '../../types';
 import { formatDateINR, formatCurrencyINR, formatTime12Hr } from '../../utils/formatters';
-import { generatePdfFromElement } from '../../utils/pdfGenerator';
+import { generateAndSavePdf } from '../../utils/documentVault';
 
 interface CheckInSlipModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: Booking | null;
   settings: PropertySettings;
+  activeUser?: UserProfile;
+  onDocumentSaved?: (doc: StoredDocument) => void;
 }
 
 export const CheckInSlipModal: React.FC<CheckInSlipModalProps> = ({
@@ -16,9 +18,12 @@ export const CheckInSlipModal: React.FC<CheckInSlipModalProps> = ({
   onClose,
   booking,
   settings,
+  activeUser,
+  onDocumentSaved,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [vaultSavedMessage, setVaultSavedMessage] = useState<string | null>(null);
   const slipContentRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen || !booking) return null;
@@ -27,13 +32,25 @@ export const CheckInSlipModal: React.FC<CheckInSlipModalProps> = ({
     window.print();
   };
 
-  const handleSavePdf = async () => {
+  const handleShareAndSavePdf = async () => {
     if (!slipContentRef.current) return;
     try {
       setIsGeneratingPdf(true);
-      const cleanGuest = booking.guestName.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `Mrudugandha_CheckIn_Slip_BK-${booking.srNo}_${cleanGuest}.pdf`;
-      await generatePdfFromElement(slipContentRef.current, filename);
+      setVaultSavedMessage(null);
+      const result = await generateAndSavePdf(slipContentRef.current, {
+        booking,
+        documentType: 'Check-in Slip',
+        activeUser,
+        autoShare: true,
+      });
+
+      if (result.success) {
+        setVaultSavedMessage('Saved to Document Vault ✓');
+        if (onDocumentSaved) {
+          onDocumentSaved(result.doc);
+        }
+        setTimeout(() => setVaultSavedMessage(null), 4000);
+      }
     } catch (err) {
       console.error('PDF generation error:', err);
       window.print();
@@ -48,6 +65,7 @@ Property: ${settings.propertyName}
 Address: Plot No. 13 & 14, Kokanwadi NA Plots Society, Ganapatipule Road, Kotawade, Tal., Dist. Ratnagiri - 415617
 Contact: +91 9890289088 | Email: mrudugandhaguesthouse@gmail.com
 Booking No: #${booking.srNo}
+Actual Booking Date: ${formatDateINR(booking.bookingDate)}
 Guest Name: ${booking.guestName}
 Phone: +91 ${booking.phone}
 Address: ${booking.address || '—'}, ${booking.city || '—'}
@@ -77,6 +95,13 @@ Nights: ${booking.stayDays}`;
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {vaultSavedMessage && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold animate-pulse">
+                <FolderCheck className="w-3.5 h-3.5" />
+                {vaultSavedMessage}
+              </span>
+            )}
+
             <button
               onClick={handleCopyPoliceData}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
@@ -96,20 +121,20 @@ Nights: ${booking.stayDays}`;
             </button>
 
             <button
-              onClick={handleSavePdf}
+              onClick={handleShareAndSavePdf}
               disabled={isGeneratingPdf}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
-              title="Download official PDF registration card"
+              title="Generate PDF, share with guest, and simultaneously save to Document Vault"
             >
               {isGeneratingPdf ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving PDF...</span>
+                  <span>Generating PDF...</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Save PDF</span>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share & Save PDF</span>
                 </>
               )}
             </button>
@@ -162,8 +187,11 @@ Nights: ${booking.stayDays}`;
                   <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Registration #</div>
                   <div className="text-lg font-black font-mono text-slate-900">BK-{booking.srNo}</div>
                 </div>
-                <div className="text-[11px] text-slate-500 mt-1">
-                  Booked: <span className="font-semibold">{formatDateINR(booking.bookingDate)}</span>
+                <div className="mt-1.5 flex flex-col items-end">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-300 rounded-md text-emerald-950 font-bold text-xs shadow-2xs">
+                    <span className="text-[10px] uppercase font-semibold text-emerald-700">Booking Date:</span>
+                    <span>{formatDateINR(booking.bookingDate)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -214,10 +242,14 @@ Nights: ${booking.stayDays}`;
             <div className="bg-slate-100 font-bold px-3 py-2 border-b border-slate-300 uppercase tracking-wider text-slate-700">
               2. Stay Particulars & Room Allocation
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-slate-200">
+            <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-y divide-slate-200">
               <div className="p-3">
-                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Allocated Unit / Villa</span>
+                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Allocated Unit</span>
                 <span className="text-sm font-bold text-emerald-900">{booking.unitAllotted}</span>
+              </div>
+              <div className="p-3 bg-emerald-50/50">
+                <span className="text-[10px] uppercase text-emerald-800 block font-bold">Booking Date</span>
+                <span className="text-xs font-bold text-slate-900">{formatDateINR(booking.bookingDate)}</span>
               </div>
               <div className="p-3">
                 <span className="text-[10px] uppercase text-slate-500 block font-semibold">Guests Count</span>
@@ -226,15 +258,21 @@ Nights: ${booking.stayDays}`;
                 </span>
               </div>
               <div className="p-3">
-                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Check-in Date & Time</span>
-                <span className="font-semibold text-slate-900">
-                  {formatDateINR(booking.checkInDate)} at {formatTime12Hr(booking.checkInTime)}
+                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Check-in</span>
+                <span className="font-semibold text-slate-900 block">
+                  {formatDateINR(booking.checkInDate)}
+                </span>
+                <span className="text-[10px] text-slate-600 font-mono">
+                  {formatTime12Hr(booking.checkInTime)}
                 </span>
               </div>
               <div className="p-3">
-                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Check-out Date & Time</span>
-                <span className="font-semibold text-slate-900">
-                  {formatDateINR(booking.checkOutDate)} at {formatTime12Hr(booking.checkOutTime)}
+                <span className="text-[10px] uppercase text-slate-500 block font-semibold">Check-out</span>
+                <span className="font-semibold text-slate-900 block">
+                  {formatDateINR(booking.checkOutDate)}
+                </span>
+                <span className="text-[10px] text-slate-600 font-mono">
+                  {formatTime12Hr(booking.checkOutTime)}
                 </span>
               </div>
             </div>

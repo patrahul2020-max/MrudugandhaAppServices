@@ -124,3 +124,22 @@ export interface UserProfile {
   email: string;
   avatar?: string;
 }
+
+export type DocumentCategory = 'Invoice' | 'Check-in Slip' | 'ID Proof' | 'Client Document' | 'Other';
+
+export interface StoredDocument {
+  id: string;
+  bookingId?: string;
+  bookingSrNo?: number;
+  guestName: string;
+  guestPhone?: string;
+  documentType: DocumentCategory;
+  title: string;
+  fileUrl: string; // base64 or URL
+  fileType: string; // 'application/pdf' | 'image/png' | 'image/jpeg' | string
+  fileSize?: string;
+  createdAt: string; // ISO date string
+  bookingDate?: string; // YYYY-MM-DD
+  notes?: string;
+  uploadedBy?: string;
+}

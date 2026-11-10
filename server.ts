@@ -51,6 +51,7 @@ interface CloudDatabase {
   users: Array<{ id: string; name: string; role: string; email?: string }>;
   bookings: any[];
   expenses: any[];
+  documents?: any[];
   settings: any;
 }
 
@@ -141,6 +142,7 @@ function loadCloudDb(): CloudDatabase {
           }
         }
       }
+      if (!parsed.documents) parsed.documents = [];
       return parsed;
     }
   } catch (err) {
@@ -155,6 +157,7 @@ function loadCloudDb(): CloudDatabase {
         if (backupFiles.length > 0) {
           const recoveredData = fs.readFileSync(path.join(BACKUPS_DIR, backupFiles[0]), 'utf-8');
           const parsed = JSON.parse(recoveredData);
+          if (!parsed.documents) parsed.documents = [];
           console.log(`✓ Automatically recovered cloud database from backup snapshot: ${backupFiles[0]}`);
           fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
           return parsed;
@@ -171,6 +174,7 @@ function loadCloudDb(): CloudDatabase {
     users: DEFAULT_USERS,
     bookings: [],
     expenses: [],
+    documents: [],
     settings: {
       propertyName: 'Mrudugandha Guesthouse',
       tagline: 'Kotawade, Ganapatipule Road, Ratnagiri',
@@ -557,7 +561,62 @@ app.delete('/api/expenses/:id', async (req, res) => {
   res.json({ success: true, version: inMemoryDb.version });
 });
 
-// 7. Settings GET & POST
+// 7. Document Vault GET, POST & DELETE (Common space for slips, invoices & client docs)
+app.get('/api/documents', (_req, res) => {
+  res.json({ success: true, documents: inMemoryDb.documents || [], version: inMemoryDb.version });
+});
+
+app.post('/api/documents', async (req, res) => {
+  const doc = req.body;
+  if (!doc || !doc.id) {
+    return res.status(400).json({ success: false, error: 'Invalid document data' });
+  }
+
+  if (!inMemoryDb.documents) inMemoryDb.documents = [];
+  const existingIdx = inMemoryDb.documents.findIndex(d => d.id === doc.id);
+  const isNew = existingIdx < 0;
+
+  if (existingIdx >= 0) {
+    inMemoryDb.documents[existingIdx] = doc;
+  } else {
+    inMemoryDb.documents = [doc, ...inMemoryDb.documents];
+  }
+
+  saveCloudDb(inMemoryDb);
+  broadcastSSE('cloud_update', {
+    type: 'document',
+    action: isNew ? 'created' : 'updated',
+    documentId: doc.id,
+    title: doc.title,
+    documentType: doc.documentType,
+    guestName: doc.guestName,
+    version: inMemoryDb.version,
+    data: inMemoryDb,
+  });
+
+  res.json({ success: true, document: doc, version: inMemoryDb.version });
+});
+
+app.delete('/api/documents/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!inMemoryDb.documents) inMemoryDb.documents = [];
+  const target = inMemoryDb.documents.find(d => d.id === id);
+  inMemoryDb.documents = inMemoryDb.documents.filter(d => d.id !== id);
+
+  saveCloudDb(inMemoryDb);
+  broadcastSSE('cloud_update', {
+    type: 'document',
+    action: 'deleted',
+    documentId: id,
+    title: target?.title || '',
+    version: inMemoryDb.version,
+    data: inMemoryDb,
+  });
+
+  res.json({ success: true, version: inMemoryDb.version });
+});
+
+// 8. Settings GET & POST
 app.get('/api/settings', (_req, res) => {
   res.json({ success: true, settings: inMemoryDb.settings, version: inMemoryDb.version });
 });
