@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Printer, Share2, Download, Building, CheckCircle2, Loader2, FolderCheck } from 'lucide-react';
+import { X, Printer, Share2, Download, Building, CheckCircle2, Loader2, FolderCheck, Eye, ExternalLink } from 'lucide-react';
 import { Booking, PropertySettings, UserProfile, StoredDocument } from '../../types';
 import { formatDateINR, formatCurrencyINR, formatTime12Hr } from '../../utils/formatters';
 import { generateAndSavePdf } from '../../utils/documentVault';
@@ -234,6 +234,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               {booking.idProofNumber && (
                 <div className="text-[11px] text-slate-500 font-mono mt-1">
                   ID: {booking.idProofType} ({booking.idProofNumber})
+                </div>
+              )}
+              {booking.idProofFileUrl && (
+                <div className="mt-2 no-print">
+                  <a
+                    href={booking.idProofFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-md border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                    title="Open attached ID proof in new tab"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>View Attached ID ({booking.idProofType})</span>
+                  </a>
                 </div>
               )}
             </div>

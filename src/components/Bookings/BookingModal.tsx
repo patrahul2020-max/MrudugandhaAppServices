@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee, BedDouble, AlertCircle, Sparkles, Trash2, Ban } from 'lucide-react';
+import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee, BedDouble, AlertCircle, Sparkles, Trash2, Ban, Eye } from 'lucide-react';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings } from '../../types';
 import { calculateStayDays, validateIndianPhone, formatCurrencyINR, getTodayDateString, getTomorrowDateString, isPastDate, formatDateINR } from '../../utils/formatters';
 import { checkBookingConflict } from '../../utils/bookingConflict';
@@ -742,14 +742,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} className="hidden" />
                   </label>
                   {formData.idProofFileUrl ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-emerald-700 font-semibold truncate max-w-[120px]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] text-emerald-700 font-bold">
                         ✓ Attached
                       </span>
                       <button
                         type="button"
+                        onClick={() => {
+                          if (formData.idProofFileUrl) {
+                            window.open(formData.idProofFileUrl, '_blank');
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded text-xs font-bold border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                        title="View attached ID in new tab"
+                      >
+                        <Eye className="w-3 h-3 text-emerald-700" />
+                        <span>View ID</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setFormData(prev => ({ ...prev, idProofFileUrl: '' }))}
-                        className="text-[10px] text-rose-600 hover:underline cursor-pointer"
+                        className="text-[10px] text-rose-600 hover:underline cursor-pointer ml-1"
                       >
                         Remove
                       </button>

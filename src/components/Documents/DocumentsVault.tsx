@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Booking, StoredDocument, DocumentCategory, UserProfile } from '../../types';
 import { formatDateINR } from '../../utils/formatters';
@@ -605,6 +606,14 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                     </button>
 
                     <button
+                      onClick={() => window.open(doc.fileUrl, '_blank')}
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      title="Open attached file path in new tab"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                    </button>
+
+                    <button
                       onClick={() => handleShare(doc)}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-emerald-200"
                       title="Share document (Web Share)"
@@ -660,6 +669,15 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open(previewDoc.fileUrl, '_blank')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  title="Open attached file path in new tab"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open in Tab</span>
+                </button>
+
                 <button
                   onClick={() => handleDownload(previewDoc)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"

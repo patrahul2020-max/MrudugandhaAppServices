@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Printer, Copy, Check, Share2, Download, ShieldCheck, Loader2, FolderCheck } from 'lucide-react';
+import { X, Printer, Copy, Check, Share2, Download, ShieldCheck, Loader2, FolderCheck, ExternalLink, Eye } from 'lucide-react';
 import { Booking, PropertySettings, UserProfile, StoredDocument } from '../../types';
 import { formatDateINR, formatCurrencyINR, formatTime12Hr } from '../../utils/formatters';
 import { generateAndSavePdf, triggerFileDownload } from '../../utils/documentVault';
@@ -364,11 +364,29 @@ Nights: ${booking.stayDays}`;
           {/* ID Attachment preview if uploaded */}
           {booking.idProofFileUrl && (
             <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 text-xs">
-              <span className="text-[10px] uppercase text-slate-500 font-bold block mb-2">Attached Government ID Proof</span>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[10px] uppercase text-slate-600 font-bold">
+                  Attached Government ID Proof ({booking.idProofType}{booking.idProofNumber ? ` · ${booking.idProofNumber}` : ''})
+                </span>
+                <div className="flex items-center gap-2 no-print">
+                  <a
+                    href={booking.idProofFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:text-emerald-950 font-bold underline cursor-pointer"
+                    title="Open full attached ID in new tab"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>View Attached ID Path</span>
+                  </a>
+                </div>
+              </div>
               <img
                 src={booking.idProofFileUrl}
                 alt="ID Proof Attachment"
-                className="max-h-40 rounded border border-slate-300 object-contain bg-white"
+                className="max-h-48 rounded border border-slate-300 object-contain bg-white cursor-pointer hover:opacity-95 shadow-2xs"
+                onClick={() => window.open(booking.idProofFileUrl, '_blank')}
+                title="Click to view full size ID"
               />
             </div>
           )}

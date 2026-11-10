@@ -20,8 +20,12 @@ import {
   List,
   PhoneCall,
   IndianRupee,
-  WalletCards
+  WalletCards,
+  Eye,
+  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
+import { IdAttachmentModal } from './IdAttachmentModal';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings, UserProfile } from '../../types';
 import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr, getTodayDateString, getTomorrowDateString, isPastDate } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
@@ -68,6 +72,9 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [addBalanceAmount, setAddBalanceAmount] = useState<string>('');
   const [addBalanceMode, setAddBalanceMode] = useState<BalanceStatus>('Paid via UPI');
   const [addBalanceNote, setAddBalanceNote] = useState<string>('');
+
+  // Attached ID Proof Preview Modal State
+  const [idPreviewBooking, setIdPreviewBooking] = useState<Booking | null>(null);
 
   const openAddBalanceModal = (booking: Booking) => {
     setAddBalanceBooking(booking);
@@ -1060,9 +1067,15 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-sm text-slate-900 truncate">{b.guestName}</span>
                         {b.idProofFileUrl && (
-                          <span className="text-[10px] text-emerald-800 bg-emerald-100 font-bold px-1.5 py-0.2 rounded border border-emerald-300 shrink-0">
-                            ID Attached
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIdPreviewBooking(b)}
+                            className="inline-flex items-center gap-1 text-[10px] text-emerald-900 bg-emerald-100 hover:bg-emerald-200 active:scale-95 font-bold px-2 py-0.5 rounded-full border border-emerald-300 shrink-0 cursor-pointer shadow-2xs transition-all"
+                            title={`View attached ${b.idProofType} for ${b.guestName}`}
+                          >
+                            <Eye className="w-3 h-3 text-emerald-700" />
+                            <span>View ID</span>
+                          </button>
                         )}
                       </div>
                       <div className="text-xs text-slate-700 mt-0.5">
@@ -1218,7 +1231,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
                   {/* Card Footer: Slips, Invoices & Edit/Delete */}
                   <div className="mt-3 pt-2.5 border-t border-black/10 flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
                         onClick={() => onViewCheckInSlip(b)}
@@ -1237,6 +1250,17 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                         <Receipt className="w-3.5 h-3.5 text-amber-800" />
                         <span>Invoice</span>
                       </button>
+                      {b.idProofFileUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setIdPreviewBooking(b)}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-semibold rounded-md border border-emerald-300 shadow-2xs transition-colors cursor-pointer"
+                          title={`View Attached ID (${b.idProofType})`}
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>View ID</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -1367,9 +1391,15 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
                           <span>{b.guestName}</span>
                           {b.idProofFileUrl && (
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200" title="ID Attached">
-                              ID
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIdPreviewBooking(b)}
+                              className="inline-flex items-center gap-1 text-[10px] text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 active:scale-95 px-1.5 py-0.5 rounded border border-emerald-300 font-bold transition-all cursor-pointer shadow-2xs"
+                              title={`View Attached ID (${b.idProofType})`}
+                            >
+                              <Eye className="w-2.5 h-2.5 text-emerald-700" />
+                              <span>View ID</span>
+                            </button>
                           )}
                         </div>
                         {b.notes && (
@@ -1489,7 +1519,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                         {renderStatusBadge(b.status, b.id)}
                       </td>
 
-                      {/* Slips & Invoices Print/View */}
+                      {/* Slips, Invoices & ID Print/View */}
                       <td className="py-2.5 px-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -1506,6 +1536,16 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                           >
                             <Receipt className="w-4 h-4" />
                           </button>
+                          {b.idProofFileUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setIdPreviewBooking(b)}
+                              className="p-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+                              title={`View Attached ID (${b.idProofType})`}
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -1728,6 +1768,15 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* ID Attachment Full Preview Modal */}
+      {idPreviewBooking && (
+        <IdAttachmentModal
+          isOpen={Boolean(idPreviewBooking)}
+          onClose={() => setIdPreviewBooking(null)}
+          booking={idPreviewBooking}
+        />
       )}
     </div>
   );
