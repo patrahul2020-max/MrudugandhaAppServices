@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   FolderArchive,
   Search,
-  Filter,
   Upload,
   FileText,
   FileCheck,
@@ -19,12 +18,7 @@ import {
   HardDrive,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   MessageCircle,
-  Cloud,
-  Check,
-  Loader2,
-  FolderTree,
 } from 'lucide-react';
 import { Booking, StoredDocument, DocumentCategory, UserProfile } from '../../types';
 import { formatDateINR } from '../../utils/formatters';
@@ -32,18 +26,7 @@ import {
   formatFileSize,
   triggerFileDownload,
   dataUrlToBlob,
-  uploadVaultDocToGoogleDrive,
 } from '../../utils/documentVault';
-import {
-  signInWithGoogleDrive,
-  logoutGoogleDrive,
-  initDriveAuth,
-  getGoogleUser,
-  uploadToClientDriveFolder,
-  PARENT_FOLDER_NAME,
-  TARGET_DRIVE_ACCOUNT,
-} from '../../utils/googleDrive';
-import { User } from 'firebase/auth';
 
 interface DocumentsVaultProps {
   documents: StoredDocument[];
@@ -66,45 +49,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
   const [previewDoc, setPreviewDoc] = useState<StoredDocument | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Google Drive connection state
-  const [googleUser, setGoogleUser] = useState<User | null>(getGoogleUser());
-  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
-  const [uploadingDriveDocId, setUploadingDriveDocId] = useState<string | null>(null);
-  const [driveBannerMessage, setDriveBannerMessage] = useState<string | null>(null);
-
-  // Initialize Drive auth state listener
-  useEffect(() => {
-    const unsubscribe = initDriveAuth(
-      user => setGoogleUser(user),
-      () => setGoogleUser(null)
-    );
-    return () => unsubscribe();
-  }, []);
-
-  const handleConnectDrive = async () => {
-    try {
-      setIsConnectingDrive(true);
-      const res = await signInWithGoogleDrive();
-      if (res?.user) {
-        setGoogleUser(res.user);
-        setDriveBannerMessage(`Connected to Google Drive as ${res.user.email || TARGET_DRIVE_ACCOUNT}`);
-        setTimeout(() => setDriveBannerMessage(null), 5000);
-      }
-    } catch (err: any) {
-      console.error('Drive connection error:', err);
-      alert(`Google Drive Sign-in: ${err.message || 'Authorization failed'}`);
-    } finally {
-      setIsConnectingDrive(false);
-    }
-  };
-
-  const handleDisconnectDrive = async () => {
-    if (confirm('Disconnect Google Drive from this browser session?')) {
-      await logoutGoogleDrive();
-      setGoogleUser(null);
-    }
-  };
-
   // Upload modal state
   const [uploadBookingId, setUploadBookingId] = useState<string>('');
   const [uploadGuestName, setUploadGuestName] = useState('');
@@ -115,7 +59,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
   const [uploadFileUrl, setUploadFileUrl] = useState<string>('');
   const [uploadFileType, setUploadFileType] = useState<string>('application/pdf');
   const [uploadFileSize, setUploadFileSize] = useState<string>('');
-  const [uploadAlsoToDrive, setUploadAlsoToDrive] = useState<boolean>(true);
   const [uploadError, setUploadError] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,35 +122,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
       const matchedBooking = bookings.find(b => b.id === uploadBookingId);
       const clientName = (uploadGuestName || matchedBooking?.guestName || 'Client').trim();
 
-      let driveFileId: string | undefined;
-      let driveWebViewLink: string | undefined;
-      let driveClientFolder: string = clientName;
-
-      // Optional direct upload to Google Drive under "clients documents / [Client Name]"
-      if (uploadAlsoToDrive) {
-        try {
-          const blob = dataUrlToBlob(uploadFileUrl);
-          const ext = uploadFileType.includes('pdf') ? 'pdf' : 'jpg';
-          const cleanName = uploadTitle.trim().replace(/[^a-zA-Z0-9]/g, '_');
-          const driveFilename = `${cleanName}.${ext}`;
-
-          const driveRes = await uploadToClientDriveFolder({
-            filename: driveFilename,
-            mimeType: uploadFileType,
-            blob,
-            clientName,
-          });
-
-          if (driveRes.success) {
-            driveFileId = driveRes.fileId;
-            driveWebViewLink = driveRes.webViewLink;
-            driveClientFolder = driveRes.clientFolder;
-          }
-        } catch (dErr) {
-          console.warn('Direct drive upload failed during file store:', dErr);
-        }
-      }
-
       const newDoc: StoredDocument = {
         id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         bookingId: uploadBookingId || undefined,
@@ -223,10 +137,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
         createdAt: new Date().toISOString(),
         notes: uploadNotes.trim() || undefined,
         uploadedBy: activeUser ? `${activeUser.name} (${activeUser.role})` : 'Front Desk',
-        driveFileId,
-        driveWebViewLink,
-        driveUploadedAt: driveWebViewLink ? new Date().toISOString() : undefined,
-        driveClientFolder,
       };
 
       await onSaveDocument(newDoc);
@@ -249,7 +159,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
     setUploadFileUrl('');
     setUploadFileType('application/pdf');
     setUploadFileSize('');
-    setUploadAlsoToDrive(true);
     setUploadError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -308,33 +217,10 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
   const handleWhatsAppShare = (doc: StoredDocument) => {
     const phone = doc.guestPhone ? doc.guestPhone.replace(/[^0-9]/g, '') : '';
     const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone : `91${phone}`;
-    let driveNote = '';
-    if (doc.driveWebViewLink) {
-      driveNote = `\nGoogle Drive Backup: ${doc.driveWebViewLink}`;
-    }
     const text = encodeURIComponent(
-      `Hello ${doc.guestName || 'Guest'},\n\nHere is your official document from *Mrudugandha Guesthouse*:\n📄 *${doc.title}*\nType: ${doc.documentType}${doc.bookingSrNo ? `\nBooking Ref: #${doc.bookingSrNo}` : ''}${driveNote}\n\nPlease let us know if you need any assistance!`
+      `Hello ${doc.guestName || 'Guest'},\n\nHere is your official document from *Mrudugandha Guesthouse*:\n📄 *${doc.title}*\nType: ${doc.documentType}${doc.bookingSrNo ? `\nBooking Ref: #${doc.bookingSrNo}` : ''}\n\nPlease let us know if you need any assistance!`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
-  };
-
-  // Upload an individual document from the vault to Google Drive
-  const handleUploadDocumentToDrive = async (doc: StoredDocument) => {
-    try {
-      setUploadingDriveDocId(doc.id);
-      const res = await uploadVaultDocToGoogleDrive(doc, activeUser);
-      if (res.success) {
-        await onSaveDocument(res.updatedDoc);
-        setDriveBannerMessage(`Uploaded "${doc.title}" to Drive folder "clients documents / ${res.clientFolder}" ✓`);
-        setTimeout(() => setDriveBannerMessage(null), 5000);
-      } else {
-        alert(`Google Drive Upload Error: ${res.error || 'Failed to upload'}`);
-      }
-    } catch (err: any) {
-      alert(`Google Drive Error: ${err.message || 'Upload failed'}`);
-    } finally {
-      setUploadingDriveDocId(null);
-    }
   };
 
   // Combine stored documents with any booking ID proofs that might not yet be indexed
@@ -405,8 +291,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
     const slips = allDocuments.filter(d => d.documentType === 'Check-in Slip').length;
     const idProofs = allDocuments.filter(d => d.documentType === 'ID Proof').length;
     const clientDocs = allDocuments.filter(d => d.documentType === 'Client Document' || d.documentType === 'Other').length;
-    const onDrive = allDocuments.filter(d => Boolean(d.driveWebViewLink || d.driveFileId)).length;
-    return { total, invoices, slips, idProofs, clientDocs, onDrive };
+    return { total, invoices, slips, idProofs, clientDocs };
   }, [allDocuments]);
 
   const getCategoryBadgeClass = (category: DocumentCategory) => {
@@ -452,10 +337,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                   Document Vault & Client Space
                 </h1>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <HardDrive className="w-3 h-3" /> Cloud & Local Vault
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
-                  <Cloud className="w-3 h-3 text-blue-600" /> Google Drive Synced
+                  <HardDrive className="w-3 h-3" /> Dedicated Common Repository
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
@@ -475,78 +357,8 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
           </div>
         </div>
 
-        {/* Google Drive Account & Folder Hierarchy Strip */}
-        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50/90 to-sky-50/90 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-              <Cloud className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-slate-900">Google Drive:</span>
-                <span className="font-mono text-blue-900 bg-white/90 px-1.5 py-0.2 rounded border border-blue-200 font-semibold">
-                  {TARGET_DRIVE_ACCOUNT}
-                </span>
-                <span className="text-slate-500">•</span>
-                <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
-                  <FolderTree className="w-3.5 h-3.5 text-blue-700" />
-                  Parent: <strong className="text-slate-900">"{PARENT_FOLDER_NAME}"</strong> → Subfolder: <strong className="text-blue-900">"[Client Name]"</strong>
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-600 mt-0.5">
-                Every client's slips, invoices, and IDs are safely organized in their own client-named subfolder.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {googleUser ? (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Drive Ready ({googleUser.email || 'Connected'})</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleDisconnectDrive}
-                  className="text-[11px] text-slate-500 hover:text-slate-700 underline cursor-pointer"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleConnectDrive}
-                disabled={isConnectingDrive}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
-              >
-                {isConnectingDrive ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Cloud className="w-3.5 h-3.5 text-amber-200" />
-                    <span>Connect Google Drive</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Feedback message banner */}
-        {driveBannerMessage && (
-          <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-150">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>{driveBannerMessage}</span>
-          </div>
-        )}
-
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4">
           <div
             onClick={() => setSelectedCategory('ALL')}
             className={`p-3 rounded-xl border transition-all cursor-pointer ${
@@ -605,11 +417,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
           >
             <div className="text-[11px] uppercase font-bold text-sky-800">Client Space</div>
             <div className="text-xl font-black text-sky-950 font-mono mt-0.5">{stats.clientDocs}</div>
-          </div>
-
-          <div className="p-3 rounded-xl border bg-blue-50/70 border-blue-200">
-            <div className="text-[11px] uppercase font-bold text-blue-900">On Google Drive</div>
-            <div className="text-xl font-black text-blue-950 font-mono mt-0.5">{stats.onDrive}</div>
           </div>
         </div>
       </div>
@@ -680,7 +487,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
           <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
             {searchQuery || selectedCategory !== 'ALL' || selectedBookingFilter !== 'ALL'
               ? 'No documents matched your active search or filters. Try clearing filters.'
-              : 'When you generate Check-in Slips or Tax Invoices using the "Share & Save PDF" or "Save to Google Drive" button, they will automatically be stored here and organized in Google Drive.'}
+              : 'When you generate Check-in Slips or Tax Invoices using the "Save PDF" or "Share PDF" button, they will automatically be stored in this repository.'}
           </p>
           <div className="mt-4">
             <button
@@ -697,7 +504,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
           {filteredDocuments.map(doc => {
             const isPdf = doc.fileType?.includes('pdf') || doc.title.toLowerCase().endsWith('.pdf');
             const isImage = doc.fileType?.includes('image') || doc.fileUrl.startsWith('data:image');
-            const isUploadingThis = uploadingDriveDocId === doc.id;
 
             return (
               <div
@@ -761,48 +567,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                     )}
                   </div>
 
-                  {/* Google Drive Folder Indicator */}
-                  {doc.driveWebViewLink ? (
-                    <div className="mt-2 p-1.5 bg-blue-50/90 border border-blue-200 rounded-lg flex items-center justify-between text-[11px] text-blue-900 font-semibold">
-                      <div className="flex items-center gap-1 truncate min-w-0">
-                        <Cloud className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span className="truncate">
-                          clients documents / {doc.driveClientFolder || doc.guestName}
-                        </span>
-                      </div>
-                      <a
-                        href={doc.driveWebViewLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-700 hover:text-blue-900 underline font-bold shrink-0 ml-1 inline-flex items-center gap-0.5"
-                      >
-                        Open ↗
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      <span>Google Drive: Not uploaded</span>
-                      <button
-                        type="button"
-                        onClick={() => handleUploadDocumentToDrive(doc)}
-                        disabled={isUploadingThis}
-                        className="text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        {isUploadingThis ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span>Uploading...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Cloud className="w-3 h-3" />
-                            <span>Upload to Drive</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-
                   {/* Metadata pills */}
                   <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
                     <span>{doc.fileSize}</span>
@@ -833,18 +597,20 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
 
                     <button
                       onClick={() => handleDownload(doc)}
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                       title="Direct download file"
                     >
                       <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Download</span>
                     </button>
 
                     <button
                       onClick={() => handleShare(doc)}
-                      className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-emerald-200"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-emerald-200"
                       title="Share document (Web Share)"
                     >
                       <Share2 className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Share</span>
                     </button>
 
                     {doc.guestPhone && (
@@ -854,27 +620,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                         title="Send to guest via WhatsApp"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {doc.driveWebViewLink ? (
-                      <a
-                        href={doc.driveWebViewLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-blue-200 inline-flex items-center"
-                        title="Open document in Google Drive"
-                      >
-                        <Cloud className="w-3.5 h-3.5 text-blue-600" />
-                      </a>
-                    ) : (
-                      <button
-                        onClick={() => handleUploadDocumentToDrive(doc)}
-                        disabled={isUploadingThis}
-                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-blue-200 inline-flex items-center"
-                        title="Upload directly to Google Drive"
-                      >
-                        <Cloud className="w-3.5 h-3.5 text-blue-600" />
                       </button>
                     )}
                   </div>
@@ -910,34 +655,11 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                   <div className="text-[11px] text-slate-400">
                     {previewDoc.guestName} · {previewDoc.documentType}
                     {previewDoc.bookingDate && ` · Booked: ${formatDateINR(previewDoc.bookingDate)}`}
-                    {previewDoc.driveWebViewLink && (
-                      <span className="text-blue-300 ml-1">· On Google Drive (clients documents / {previewDoc.driveClientFolder || previewDoc.guestName})</span>
-                    )}
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {previewDoc.driveWebViewLink ? (
-                  <a
-                    href={previewDoc.driveWebViewLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span>Open in Drive</span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={() => handleUploadDocumentToDrive(previewDoc)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span>Send to Drive</span>
-                  </button>
-                )}
-
                 <button
                   onClick={() => handleDownload(previewDoc)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
@@ -1127,26 +849,6 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                 )}
               </div>
 
-              {/* Google Drive Upload Checkbox */}
-              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={uploadAlsoToDrive}
-                    onChange={e => setUploadAlsoToDrive(e.target.checked)}
-                    className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <span className="font-bold text-slate-900 block">
-                      Save to Google Drive folder: "{PARENT_FOLDER_NAME} / {uploadGuestName || 'Client'}"
-                    </span>
-                    <span className="text-[11px] text-slate-600 block mt-0.5">
-                      Target Google Drive: {TARGET_DRIVE_ACCOUNT}. Automatically creates the client's folder if it doesn't already exist.
-                    </span>
-                  </div>
-                </label>
-              </div>
-
               {/* Optional Notes */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -1179,7 +881,7 @@ export const DocumentsVault: React.FC<DocumentsVaultProps> = ({
                   disabled={isSaving}
                   className="px-5 py-2 text-xs font-bold bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-lg transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving to Vault & Drive...' : 'Save Document'}
+                  {isSaving ? 'Saving to Vault...' : 'Save Document'}
                 </button>
               </div>
             </form>

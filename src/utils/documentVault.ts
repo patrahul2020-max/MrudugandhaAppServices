@@ -3,7 +3,6 @@ import { jsPDF } from 'jspdf';
 import { Booking, StoredDocument, DocumentCategory, UserProfile } from '../types';
 import { saveCloudDocument } from './api';
 import { loadDocuments, saveDocuments } from './storage';
-import { uploadToClientDriveFolder } from './googleDrive';
 
 /**
  * Formats byte size into human readable string
@@ -44,7 +43,7 @@ export function triggerFileDownload(blob: Blob, filename: string): void {
 }
 
 /**
- * Shares or downloads a generated PDF file
+ * Shares or downloads a generated PDF file via Web Share API or download fallback
  */
 export async function shareOrDownloadPdf(
   blob: Blob,
@@ -78,8 +77,7 @@ export async function shareOrDownloadPdf(
  * Generates a full-content high-quality PDF from a DOM element.
  * Ensures 100% of the content (including all scrollable tables, terms, and signatures)
  * is captured and properly paginated into A4 pages without any clipping.
- * Automatically saves the document into the local and cloud Document Vault,
- * and optionally uploads it to Google Drive in the client's dedicated folder.
+ * Automatically saves the document into the local and cloud Document Vault.
  */
 export async function generateAndSavePdf(
   element: HTMLElement,
@@ -88,7 +86,7 @@ export async function generateAndSavePdf(
     documentType: 'Check-in Slip' | 'Invoice';
     activeUser?: UserProfile;
     autoShare?: boolean;
-    uploadToDrive?: boolean;
+    autoDownload?: boolean;
     notes?: string;
   }
 ): Promise<{
@@ -98,27 +96,23 @@ export async function generateAndSavePdf(
   dataUrl: string;
   filename: string;
   shared: boolean;
-  driveResult?: {
-    success: boolean;
-    fileId?: string;
-    webViewLink?: string;
-    clientFolder?: string;
-    error?: string;
-  };
+  downloaded: boolean;
 }> {
-  const { booking, documentType, activeUser, autoShare = true, uploadToDrive = false, notes } = options;
+  const { booking, documentType, activeUser, autoShare = false, autoDownload = false, notes } = options;
 
-  // Clean filename: e.g. "Mrudugandha_Invoice_BK101_Rahul_Patil.pdf"
+  // Clean filename: e.g. "Mrudugandha_Tax_Invoice_BK101_Rahul_Patil.pdf"
   const safeName = (booking.guestName || 'Guest').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 25);
   const typeTag = documentType === 'Invoice' ? 'Tax_Invoice' : 'CheckIn_Slip';
   const filename = `Mrudugandha_${typeTag}_BK${booking.srNo || '1'}_${safeName}.pdf`;
 
   // --- FULL CONTENT CAPTURE PREPARATION ---
-  // Save previous inline styles so we can temporarily expand the container to render 100% of the content
+  // Save previous inline styles and scroll position so we can temporarily expand the container to render 100% of content
   const prevMaxHeight = element.style.maxHeight;
   const prevOverflow = element.style.overflow;
   const prevHeight = element.style.height;
+  const prevScrollTop = element.scrollTop;
 
+  element.scrollTop = 0;
   element.style.maxHeight = 'none';
   element.style.overflow = 'visible';
   element.style.height = 'auto';
@@ -131,18 +125,15 @@ export async function generateAndSavePdf(
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-      scrollY: -window.scrollY,
-      scrollX: -window.scrollX,
+      scrollY: 0,
+      scrollX: 0,
     });
   } finally {
-    // Restore original styles
+    // Restore original styles & scroll
     element.style.maxHeight = prevMaxHeight;
     element.style.overflow = prevOverflow;
     element.style.height = prevHeight;
+    element.scrollTop = prevScrollTop;
   }
 
   const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -168,7 +159,7 @@ export async function generateAndSavePdf(
   pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalHeightMm);
   heightLeft -= pdfHeight;
 
-  // If content spans beyond 1 A4 page, create additional pages to capture full content
+  // If content spans beyond 1 A4 page, create additional pages to capture full content without clipping
   while (heightLeft > 2) {
     position -= pdfHeight;
     pdf.addPage();
@@ -183,41 +174,6 @@ export async function generateAndSavePdf(
   // Create document record for the common Document Vault
   const docId = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const docTitle = `${documentType} #${booking.srNo} - ${booking.guestName}`;
-
-  let driveResult:
-    | {
-        success: boolean;
-        fileId?: string;
-        webViewLink?: string;
-        clientFolder?: string;
-        error?: string;
-      }
-    | undefined;
-
-  // Upload to Google Drive if requested
-  if (uploadToDrive) {
-    try {
-      const uploadRes = await uploadToClientDriveFolder({
-        filename,
-        mimeType: 'application/pdf',
-        blob,
-        clientName: booking.guestName,
-      });
-      driveResult = {
-        success: uploadRes.success,
-        fileId: uploadRes.fileId,
-        webViewLink: uploadRes.webViewLink,
-        clientFolder: uploadRes.clientFolder,
-        error: uploadRes.error,
-      };
-    } catch (dErr: any) {
-      console.warn('Google Drive direct upload error:', dErr);
-      driveResult = {
-        success: false,
-        error: dErr.message || 'Google Drive upload failed',
-      };
-    }
-  }
 
   const storedDoc: StoredDocument = {
     id: docId,
@@ -234,10 +190,6 @@ export async function generateAndSavePdf(
     createdAt: new Date().toISOString(),
     notes: notes || `Generated from ${documentType} on booking #${booking.srNo}`,
     uploadedBy: activeUser ? `${activeUser.name} (${activeUser.role})` : 'Front Desk',
-    driveFileId: driveResult?.fileId,
-    driveWebViewLink: driveResult?.webViewLink,
-    driveUploadedAt: driveResult?.success ? new Date().toISOString() : undefined,
-    driveClientFolder: driveResult?.clientFolder || booking.guestName,
   };
 
   // Simultaneously save into local storage & Cloud DB vault
@@ -258,13 +210,21 @@ export async function generateAndSavePdf(
     console.warn('Failed to save document to cloud repository:', cloudErr);
   }
 
-  // Trigger native share or automatic download
+  // Trigger download if requested
+  let downloaded = false;
+  if (autoDownload) {
+    triggerFileDownload(blob, filename);
+    downloaded = true;
+  }
+
+  // Trigger native share if requested
   let shared = false;
   if (autoShare) {
     const shareTitle = `${documentType} - ${booking.guestName} (#${booking.srNo})`;
     const shareText = `Official ${documentType} for ${booking.guestName} (Booking #${booking.srNo}, ${booking.unitAllotted}) at Mrudugandha Guesthouse, Kotawade.`;
     const res = await shareOrDownloadPdf(blob, filename, shareTitle, shareText);
     shared = res.shared;
+    if (res.downloaded) downloaded = true;
   }
 
   return {
@@ -274,81 +234,6 @@ export async function generateAndSavePdf(
     dataUrl,
     filename,
     shared,
-    driveResult,
-  };
-}
-
-/**
- * Uploads an existing StoredDocument from the Document Vault directly to Google Drive.
- * Keeps data organized folder-wise: parent "clients documents" -> client-named folder.
- */
-export async function uploadVaultDocToGoogleDrive(
-  doc: StoredDocument,
-  activeUser?: UserProfile
-): Promise<{
-  success: boolean;
-  updatedDoc: StoredDocument;
-  webViewLink?: string;
-  clientFolder: string;
-  error?: string;
-}> {
-  const clientName = doc.guestName || 'Client';
-  const ext = doc.fileType?.includes('pdf') || doc.title.toLowerCase().endsWith('.pdf') ? 'pdf' : 'jpg';
-  const cleanTitle = doc.title.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `${cleanTitle}.${ext}`;
-  const mimeType = doc.fileType || (ext === 'pdf' ? 'application/pdf' : 'image/jpeg');
-
-  let blob: Blob;
-  if (doc.fileUrl.startsWith('data:')) {
-    blob = dataUrlToBlob(doc.fileUrl);
-  } else {
-    const response = await fetch(doc.fileUrl);
-    blob = await response.blob();
-  }
-
-  const result = await uploadToClientDriveFolder({
-    filename,
-    mimeType,
-    blob,
-    clientName,
-  });
-
-  if (!result.success) {
-    return {
-      success: false,
-      updatedDoc: doc,
-      clientFolder: result.clientFolder,
-      error: result.error,
-    };
-  }
-
-  // Update document record with Drive metadata
-  const updatedDoc: StoredDocument = {
-    ...doc,
-    driveFileId: result.fileId,
-    driveWebViewLink: result.webViewLink,
-    driveUploadedAt: new Date().toISOString(),
-    driveClientFolder: result.clientFolder,
-  };
-
-  try {
-    const existing = loadDocuments();
-    const updatedList = existing.map(d => (d.id === doc.id ? updatedDoc : d));
-    saveDocuments(updatedList);
-  } catch (err) {
-    console.warn('Failed to update local storage after Drive upload:', err);
-  }
-
-  try {
-    await saveCloudDocument(updatedDoc, activeUser);
-  } catch (err) {
-    console.warn('Failed to update Cloud DB after Drive upload:', err);
-  }
-
-  return {
-    success: true,
-    updatedDoc,
-    webViewLink: result.webViewLink,
-    clientFolder: result.clientFolder,
+    downloaded,
   };
 }
