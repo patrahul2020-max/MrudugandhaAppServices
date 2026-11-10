@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Printer, Copy, Check, Share2, ShieldCheck, Loader2, FolderCheck } from 'lucide-react';
+import { X, Printer, Copy, Check, Share2, ShieldCheck, Loader2, FolderCheck, Cloud, ExternalLink } from 'lucide-react';
 import { Booking, PropertySettings, UserProfile, StoredDocument } from '../../types';
 import { formatDateINR, formatCurrencyINR, formatTime12Hr } from '../../utils/formatters';
 import { generateAndSavePdf } from '../../utils/documentVault';
@@ -23,7 +23,9 @@ export const CheckInSlipModal: React.FC<CheckInSlipModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isDriveUploading, setIsDriveUploading] = useState(false);
   const [vaultSavedMessage, setVaultSavedMessage] = useState<string | null>(null);
+  const [driveSuccessLink, setDriveSuccessLink] = useState<string | null>(null);
   const slipContentRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen || !booking) return null;
@@ -56,6 +58,44 @@ export const CheckInSlipModal: React.FC<CheckInSlipModalProps> = ({
       window.print();
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleShareToGoogleDrive = async () => {
+    if (!slipContentRef.current) return;
+    try {
+      setIsDriveUploading(true);
+      setDriveSuccessLink(null);
+      setVaultSavedMessage(null);
+
+      const result = await generateAndSavePdf(slipContentRef.current, {
+        booking,
+        documentType: 'Check-in Slip',
+        activeUser,
+        autoShare: false,
+        uploadToDrive: true,
+      });
+
+      if (result.success) {
+        if (onDocumentSaved) {
+          onDocumentSaved(result.doc);
+        }
+
+        if (result.driveResult?.success) {
+          setVaultSavedMessage(`Uploaded to Drive: clients documents/${result.driveResult.clientFolder} ✓`);
+          if (result.driveResult.webViewLink) {
+            setDriveSuccessLink(result.driveResult.webViewLink);
+          }
+        } else {
+          setVaultSavedMessage(`Vault saved (Drive note: ${result.driveResult?.error || 'Authorization needed'})`);
+        }
+        setTimeout(() => setVaultSavedMessage(null), 6000);
+      }
+    } catch (err: any) {
+      console.error('Drive upload error:', err);
+      setVaultSavedMessage(`Drive upload error: ${err.message || 'Failed'}`);
+    } finally {
+      setIsDriveUploading(false);
     }
   };
 
@@ -98,7 +138,17 @@ Nights: ${booking.stayDays}`;
             {vaultSavedMessage && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold animate-pulse">
                 <FolderCheck className="w-3.5 h-3.5" />
-                {vaultSavedMessage}
+                <span>{vaultSavedMessage}</span>
+                {driveSuccessLink && (
+                  <a
+                    href={driveSuccessLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 underline text-white font-bold inline-flex items-center gap-0.5 hover:text-amber-300"
+                  >
+                    Open Drive <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
               </span>
             )}
 
@@ -122,19 +172,38 @@ Nights: ${booking.stayDays}`;
 
             <button
               onClick={handleShareAndSavePdf}
-              disabled={isGeneratingPdf}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
-              title="Generate PDF, share with guest, and simultaneously save to Document Vault"
+              disabled={isGeneratingPdf || isDriveUploading}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              title="Generate full content PDF, share with guest, and save to Document Vault"
             >
               {isGeneratingPdf ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Generating PDF...</span>
+                  <span>Generating Full PDF...</span>
                 </>
               ) : (
                 <>
                   <Share2 className="w-3.5 h-3.5" />
                   <span>Share & Save PDF</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleShareToGoogleDrive}
+              disabled={isGeneratingPdf || isDriveUploading}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs border border-blue-400/40 disabled:opacity-50"
+              title="Upload full PDF directly into Google Drive in parent folder 'clients documents' / '[Client Name]'"
+            >
+              {isDriveUploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Uploading to Drive...</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Save to Google Drive</span>
                 </>
               )}
             </button>

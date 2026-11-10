@@ -142,4 +142,8 @@ export interface StoredDocument {
   bookingDate?: string; // YYYY-MM-DD
   notes?: string;
   uploadedBy?: string;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+  driveUploadedAt?: string;
+  driveClientFolder?: string;
 }
