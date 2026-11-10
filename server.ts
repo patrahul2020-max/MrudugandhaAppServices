@@ -372,6 +372,32 @@ app.post('/api/bookings', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid booking data' });
   }
 
+  // Strict rule: do not allow bookings for past dates
+  const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  const existingIdx = inMemoryDb.bookings.findIndex(b => b.id === booking.id);
+  const isNew = existingIdx < 0;
+
+  if (isNew && booking.checkInDate && booking.checkInDate < todayIST) {
+    return res.status(400).json({
+      success: false,
+      error: `Bookings for past dates are not allowed. Check-in date (${booking.checkInDate}) is in the past.`,
+    });
+  }
+
+  if (!isNew && booking.checkInDate && booking.checkInDate < todayIST && booking.checkInDate !== inMemoryDb.bookings[existingIdx].checkInDate) {
+    return res.status(400).json({
+      success: false,
+      error: `Rescheduling to past dates is not allowed. Check-in date (${booking.checkInDate}) is in the past.`,
+    });
+  }
+
+  if (booking.checkOutDate && booking.checkInDate && booking.checkOutDate < booking.checkInDate) {
+    return res.status(400).json({
+      success: false,
+      error: `Check-out date (${booking.checkOutDate}) cannot be before check-in date (${booking.checkInDate}).`,
+    });
+  }
+
   // Prevent duplicate overlapping bookings for same unit/category
   if (booking.status !== 'Cancelled') {
     const conflict = checkBookingConflict(booking, inMemoryDb.bookings);
@@ -391,8 +417,6 @@ app.post('/api/bookings', async (req, res) => {
     console.error('PostgreSQL booking save error:', dbErr);
   }
 
-  const existingIdx = inMemoryDb.bookings.findIndex(b => b.id === booking.id);
-  const isNew = existingIdx < 0;
   if (existingIdx >= 0) {
     inMemoryDb.bookings[existingIdx] = { ...booking, updatedAt: new Date().toISOString() };
   } else {

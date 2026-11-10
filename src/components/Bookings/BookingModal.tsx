@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee, BedDouble, AlertCircle, Sparkles, Trash2, Ban } from 'lucide-react';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings } from '../../types';
-import { calculateStayDays, validateIndianPhone, formatCurrencyINR } from '../../utils/formatters';
+import { calculateStayDays, validateIndianPhone, formatCurrencyINR, getTodayDateString, getTomorrowDateString, isPastDate, formatDateINR } from '../../utils/formatters';
 import { checkBookingConflict } from '../../utils/bookingConflict';
 import { calculateStayTariff, TariffCalculationResult } from '../../utils/tariffCalculator';
 
@@ -28,8 +28,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   isOwner,
   onDelete,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
+  const tomorrowStr = getTomorrowDateString(todayStr);
 
   const [formData, setFormData] = useState<Partial<Booking>>({
     srNo: nextSrNo,
@@ -69,6 +69,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const conflictResult = useMemo(() => {
     return checkBookingConflict(formData, existingBookings || []);
   }, [formData, existingBookings]);
+
+  // Strict validation: do not allow bookings for past dates
+  const isPastCheckIn = useMemo(() => {
+    if (!formData.checkInDate) return false;
+    // Allow editing existing historical bookings if check-in date is unmodified
+    if (bookingToEdit && formData.checkInDate === bookingToEdit.checkInDate) {
+      return false;
+    }
+    return isPastDate(formData.checkInDate);
+  }, [formData.checkInDate, bookingToEdit]);
 
   // Rate and tariff calculation (Base fixed rate + extra person charges) × stay nights
   const [isManualTotal, setIsManualTotal] = useState(false);
@@ -274,6 +284,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPastCheckIn) {
+      alert(`⚠️ Past Date Booking Not Allowed!\n\nCheck-in date (${formatDateINR(formData.checkInDate)}) is in the past. Bookings cannot be made for past dates. Please select today (${formatDateINR(todayStr)}) or a future date.`);
+      return;
+    }
+
+    if (formData.checkOutDate && formData.checkInDate && formData.checkOutDate < formData.checkInDate) {
+      alert(`⚠️ Invalid Stay Dates!\n\nCheck-out date (${formatDateINR(formData.checkOutDate)}) cannot be earlier than check-in date (${formatDateINR(formData.checkInDate)}).`);
+      return;
+    }
+
     if (conflictResult.hasConflict) {
       alert(`⚠️ Duplicate Booking Conflict!\n\n${conflictResult.conflictReason}\n\nOverlapping bookings for the same unit or category are strictly not allowed. Please change the stay dates or select an alternate vacant unit.`);
       return;
@@ -769,12 +789,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <input
                     type="date"
                     required
+                    min={!bookingToEdit ? todayStr : undefined}
                     value={formData.checkInDate}
                     onChange={e => {
                       setIsManualTotal(false);
                       setFormData(prev => ({ ...prev, checkInDate: e.target.value }));
                     }}
-                    className="col-span-3 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                    className={`col-span-3 text-xs font-medium border rounded-lg px-2.5 py-2 focus:ring-2 focus:outline-hidden ${
+                      isPastCheckIn
+                        ? 'bg-rose-50 border-rose-400 text-rose-950 focus:ring-rose-500'
+                        : 'bg-slate-50 border-slate-300 focus:bg-white focus:ring-emerald-700'
+                    }`}
                   />
                   <input
                     type="time"
@@ -793,6 +818,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <input
                     type="date"
                     required
+                    min={formData.checkInDate || todayStr}
                     value={formData.checkOutDate}
                     onChange={e => {
                       setIsManualTotal(false);
@@ -818,6 +844,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </span>
               </div>
             </div>
+
+            {/* Past Date Disallowed Warning Banner */}
+            {isPastCheckIn && (
+              <div className="p-2.5 bg-rose-100/95 border border-rose-300 rounded-lg text-rose-950 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+                <span>
+                  Past dates are not allowed. Check-in date ({formatDateINR(formData.checkInDate)}) is in the past. Please select today ({formatDateINR(todayStr)}) or a future date.
+                </span>
+              </div>
+            )}
 
             {conflictResult.hasConflict && (
               <div className="p-2.5 bg-rose-100/90 border border-rose-300 rounded-lg text-rose-950 text-xs font-semibold flex items-center gap-2">
@@ -1103,18 +1139,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             <button
               type="submit"
-              disabled={conflictResult.hasConflict}
+              disabled={conflictResult.hasConflict || isPastCheckIn}
               className={`px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-2 ${
-                conflictResult.hasConflict
+                conflictResult.hasConflict || isPastCheckIn
                   ? 'bg-rose-100 text-rose-800 border-2 border-rose-300 cursor-not-allowed opacity-90'
                   : 'text-white bg-emerald-800 hover:bg-emerald-900 cursor-pointer active:scale-98'
               }`}
-              title={conflictResult.hasConflict ? 'Cannot save due to duplicate overlapping booking conflict' : 'Confirm and save booking'}
+              title={
+                conflictResult.hasConflict
+                  ? 'Cannot save due to duplicate overlapping booking conflict'
+                  : isPastCheckIn
+                  ? 'Cannot save: past dates are not allowed for bookings'
+                  : 'Confirm and save booking'
+              }
             >
               {conflictResult.hasConflict ? (
                 <>
                   <Ban className="w-4 h-4 text-rose-700" />
                   <span>Duplicate Conflict (Cannot Save)</span>
+                </>
+              ) : isPastCheckIn ? (
+                <>
+                  <Ban className="w-4 h-4 text-rose-700" />
+                  <span>Past Date (Cannot Save)</span>
                 </>
               ) : (
                 <span>{bookingToEdit ? 'Save Changes' : 'Confirm & Save Booking'}</span>

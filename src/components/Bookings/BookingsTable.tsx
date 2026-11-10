@@ -23,7 +23,7 @@ import {
   WalletCards
 } from 'lucide-react';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings, UserProfile } from '../../types';
-import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr } from '../../utils/formatters';
+import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr, getTodayDateString, getTomorrowDateString, isPastDate } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
 import { checkBookingConflict } from '../../utils/bookingConflict';
 import { calculateStayTariff } from '../../utils/tariffCalculator';
@@ -128,7 +128,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [customMonth, setCustomMonth] = useState<string>(currentMonthStr);
   const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   const isOwner = Boolean(
     activeUser && (
@@ -462,8 +462,20 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
     );
   }, [showQuickAdd, quickUnit, quickCheckIn, quickCheckOut, bookings]);
 
+  const isQuickPastCheckIn = useMemo(() => isPastDate(quickCheckIn), [quickCheckIn]);
+
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isQuickPastCheckIn) {
+      alert(`⚠️ Past Date Booking Not Allowed!\n\nCheck-in date cannot be in the past (${formatDateINR(quickCheckIn)}). Please choose today (${formatDateINR(todayStr)}) or a future date.`);
+      return;
+    }
+
+    if (quickCheckOut < quickCheckIn) {
+      alert(`⚠️ Invalid Stay Dates!\n\nCheck-out date (${formatDateINR(quickCheckOut)}) cannot be earlier than check-in date (${formatDateINR(quickCheckIn)}).`);
+      return;
+    }
+
     if (!quickGuestName.trim()) {
       alert('Please enter guest name');
       return;
@@ -632,9 +644,14 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <input
                 type="date"
                 required
+                min={todayStr}
                 value={quickCheckIn}
                 onChange={e => setQuickCheckIn(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                className={`w-full border rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:outline-hidden ${
+                  isQuickPastCheckIn
+                    ? 'bg-rose-50 border-rose-400 text-rose-950 focus:ring-rose-500'
+                    : 'bg-white border-slate-300 focus:ring-emerald-700'
+                }`}
               />
             </div>
 
@@ -643,6 +660,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <input
                 type="date"
                 required
+                min={quickCheckIn || todayStr}
                 value={quickCheckOut}
                 onChange={e => setQuickCheckOut(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
@@ -662,6 +680,21 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               />
             </div>
           </div>
+
+          {/* Quick Add Past Date Warning Banner */}
+          {isQuickPastCheckIn && (
+            <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-lg text-rose-950 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in duration-150">
+              <span className="text-rose-600 font-bold text-sm shrink-0">⚠️</span>
+              <div>
+                <span className="font-bold text-rose-900 uppercase tracking-wider block text-[10px]">
+                  Past Date Not Allowed
+                </span>
+                <p className="mt-0.5 text-rose-900 font-medium">
+                  Check-in date cannot be in the past ({formatDateINR(quickCheckIn)}). Please select today ({formatDateINR(todayStr)}) or a future date.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Quick Add Overlap Conflict Warning Banner */}
           {quickConflict.hasConflict && (
@@ -693,16 +726,24 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={quickConflict.hasConflict}
+                disabled={quickConflict.hasConflict || isQuickPastCheckIn}
                 className={`px-4 py-1.5 text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 ${
-                  quickConflict.hasConflict
+                  quickConflict.hasConflict || isQuickPastCheckIn
                     ? 'bg-rose-100 text-rose-800 border-2 border-rose-300 cursor-not-allowed opacity-90'
                     : 'text-white bg-emerald-800 hover:bg-emerald-900 cursor-pointer'
                 }`}
-                title={quickConflict.hasConflict ? 'Cannot save due to duplicate booking conflict' : 'Save quick booking'}
+                title={
+                  quickConflict.hasConflict
+                    ? 'Cannot save due to duplicate booking conflict'
+                    : isQuickPastCheckIn
+                    ? 'Cannot save: past dates are not allowed'
+                    : 'Save quick booking'
+                }
               >
                 {quickConflict.hasConflict ? (
                   <span>⚠️ Duplicate Conflict (Blocked)</span>
+                ) : isQuickPastCheckIn ? (
+                  <span>⚠️ Past Date (Blocked)</span>
                 ) : (
                   <span>✓ Save Quick Booking</span>
                 )}

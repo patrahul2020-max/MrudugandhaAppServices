@@ -184,3 +184,43 @@ export function getStayUnitsWeight(unitAllotted?: string | null): number {
 
   return 1;
 }
+
+/**
+ * Returns today's date string in YYYY-MM-DD format (IST time zone)
+ */
+export function getTodayDateString(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  } catch {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+}
+
+/**
+ * Returns tomorrow's date string in YYYY-MM-DD format
+ */
+export function getTomorrowDateString(baseDateStr?: string): string {
+  try {
+    const base = baseDateStr ? new Date(baseDateStr) : new Date();
+    base.setDate(base.getDate() + 1);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(base);
+  } catch {
+    const d = new Date(Date.now() + 86400000);
+    return d.toISOString().split('T')[0];
+  }
+}
+
+/**
+ * Checks whether a YYYY-MM-DD date is strictly in the past (before today's date in IST)
+ */
+export function isPastDate(dateStr?: string | null): boolean {
+  if (!dateStr) return false;
+  const today = getTodayDateString();
+  const cleanDate = dateStr.split('T')[0];
+  return cleanDate < today;
+}
+
