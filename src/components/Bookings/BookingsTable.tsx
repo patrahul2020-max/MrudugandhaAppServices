@@ -197,7 +197,26 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
       return true;
     }).sort((a, b) => {
-      // Check-in Date wise sorting (with secondary check-in time and srNo tiebreaker)
+      // 1. Month grouping (YYYY-MM): Keep bookings grouped by their check-in month
+      // This ensures that in All Time view, checked-out/cancelled entries shift to the bottom of their month
+      // and are seen strictly before next month's bookings.
+      const monthA = (a.checkInDate || '').split('T')[0].slice(0, 7) || '9999-99';
+      const monthB = (b.checkInDate || '').split('T')[0].slice(0, 7) || '9999-99';
+      if (monthA !== monthB) {
+        return sortAsc ? monthA.localeCompare(monthB) : monthB.localeCompare(monthA);
+      }
+
+      // 2. Status priority within the month:
+      // Active bookings (Upcoming, Active / Checked-in) stay at the top (0)
+      // Closed bookings (Checked-out, Cancelled) shift to the bottom of that month (1)
+      const isClosedStatus = (status?: string) => status === 'Checked-out' || status === 'Cancelled';
+      const closedA = isClosedStatus(a.status) ? 1 : 0;
+      const closedB = isClosedStatus(b.status) ? 1 : 0;
+      if (closedA !== closedB) {
+        return closedA - closedB;
+      }
+
+      // 3. Sorting within the same status group
       if (sortField === 'checkInDate') {
         const dateA = a.checkInDate || '';
         const dateB = b.checkInDate || '';

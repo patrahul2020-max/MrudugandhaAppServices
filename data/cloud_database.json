@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "lastUpdated": "2026-11-10T06:26:29.566Z",
+  "version": 9,
+  "lastUpdated": "2026-11-10T09:08:26.662Z",
   "users": [
     {
       "id": "user_owner",
@@ -29,6 +29,40 @@
   ],
   "bookings": [
     {
+      "id": "bk_1794301705459",
+      "srNo": 106,
+      "referralSource": "Airbnb",
+      "guestName": "aaaaad",
+      "phone": "",
+      "address": "",
+      "city": "",
+      "notes": "",
+      "idProofType": "Aadhaar Card",
+      "idProofNumber": "",
+      "idProofFileUrl": "",
+      "adults": 2,
+      "children": 0,
+      "infants": 0,
+      "unitAllotted": "Full Villa",
+      "bookingDate": "2026-11-10",
+      "checkInDate": "2026-12-02",
+      "checkInTime": "13:00",
+      "checkOutDate": "2026-12-05",
+      "checkOutTime": "11:00",
+      "stayDays": 3,
+      "totalAmount": 45000,
+      "advancePaid": 22500,
+      "balanceAmount": 22500,
+      "balanceStatus": "Pending",
+      "commission": 0,
+      "serviceCharges": 0,
+      "status": "Upcoming",
+      "createdAt": "2026-11-10T09:08:25.459Z",
+      "updatedAt": "2026-11-10T09:08:25.459Z",
+      "lastModifiedBy": "Rahul Vasudeo (Owner / Admin • Desktop)",
+      "lastModifiedAt": "2026-11-10T09:08:25.459Z"
+    },
+    {
       "id": "bk_1794289609266",
       "srNo": 105,
       "referralSource": "Airbnb",
@@ -56,10 +90,10 @@
       "commission": 0,
       "serviceCharges": 0,
       "status": "Upcoming",
-      "createdAt": "2026-11-10T05:46:49.266Z",
-      "updatedAt": "2026-11-10T05:46:49.266Z",
+      "createdAt": "2026-11-10T05:46:49.516Z",
+      "updatedAt": "2026-11-10T05:46:49.181Z",
       "lastModifiedBy": "Rahul Vasudeo (Owner / Admin • Desktop)",
-      "lastModifiedAt": "2026-11-10T05:46:49.267Z"
+      "lastModifiedAt": "2026-11-10T05:46:49.181Z"
     },
     {
       "id": "bk_1794218210121",
@@ -108,6 +142,7 @@
       "idProofFileUrl": "",
       "adults": 2,
       "children": 0,
+      "infants": 0,
       "unitAllotted": "Ground Floor",
       "bookingDate": "2026-11-08",
       "checkInDate": "2026-11-08",
@@ -123,9 +158,9 @@
       "serviceCharges": 0,
       "status": "Checked-out",
       "createdAt": "2026-11-08T11:49:28.756Z",
-      "updatedAt": "2026-11-10T06:26:29.566Z",
+      "updatedAt": "2026-11-10T09:05:37.571Z",
       "lastModifiedBy": "Rahul Vasudeo (Owner / Admin • Desktop)",
-      "lastModifiedAt": "2026-11-10T06:26:28.011Z"
+      "lastModifiedAt": "2026-11-10T09:05:37.052Z"
     },
     {
       "id": "bk_1794133310558",
