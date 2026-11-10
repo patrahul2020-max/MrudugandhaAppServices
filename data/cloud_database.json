@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "lastUpdated": "2026-11-10T05:46:49.559Z",
+  "version": 4,
+  "lastUpdated": "2026-11-10T06:26:29.566Z",
   "users": [
     {
       "id": "user_owner",
@@ -121,11 +121,11 @@
       "balanceStatus": "Pending",
       "commission": 0,
       "serviceCharges": 0,
-      "status": "Active / Checked-in",
+      "status": "Checked-out",
       "createdAt": "2026-11-08T11:49:28.756Z",
-      "updatedAt": "2026-11-09T09:57:19.510Z",
+      "updatedAt": "2026-11-10T06:26:29.566Z",
       "lastModifiedBy": "Rahul Vasudeo (Owner / Admin • Desktop)",
-      "lastModifiedAt": "2026-11-09T09:57:19.510Z"
+      "lastModifiedAt": "2026-11-10T06:26:28.011Z"
     },
     {
       "id": "bk_1794133310558",

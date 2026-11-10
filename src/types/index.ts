@@ -47,8 +47,9 @@ export interface Booking {
   idProofType: 'Aadhaar Card' | 'Passport' | 'Driving License' | 'Voter ID' | 'Other';
   idProofNumber: string;
   idProofFileUrl?: string; // base64 or object URL
-  adults: number;
-  children: number; // 5 to 10 yrs
+  adults: number; // adults and guests above 12 yrs
+  children: number; // children 5 to 12 yrs
+  infants?: number; // children below 5 yrs (complimentary / 0 charge)
   unitAllotted: string; // e.g. Full Villa, Ground Floor, First Floor, Cottage 1, Cottage 2
   bookingDate: string; // YYYY-MM-DD
   checkInDate: string; // YYYY-MM-DD
@@ -85,9 +86,12 @@ export interface Expense {
 export interface UnitConfig {
   id: string;
   name: string;
+  baseCapacity?: number; // fixed occupancy covered in base rate
   capacityAdults?: number;
   capacityChildren?: number;
   baseRatePerNight: number;
+  extraAdultRate?: number; // per extra adult (12+ yrs) per night
+  extraChildRate?: number; // per extra child (5-12 yrs) per night
   description?: string;
   isActive: boolean;
 }

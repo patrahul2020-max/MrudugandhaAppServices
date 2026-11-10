@@ -5,12 +5,12 @@ const STORAGE_KEY_EXPENSES = 'atithi_expenses_v1';
 const STORAGE_KEY_SETTINGS = 'atithi_settings_v1';
 
 export const DEFAULT_UNITS: UnitConfig[] = [
-  { id: 'unit_full_villa', name: 'Full Villa', baseRatePerNight: 15000, isActive: true },
-  { id: 'unit_gf', name: 'Ground Floor', baseRatePerNight: 8000, isActive: true },
-  { id: 'unit_ff', name: 'First Floor', baseRatePerNight: 6000, isActive: true },
-  { id: 'unit_cottages_all', name: 'Both Cottages', baseRatePerNight: 6000, isActive: true },
-  { id: 'unit_cottage_1', name: 'Cottage 1', baseRatePerNight: 3000, isActive: true },
-  { id: 'unit_cottage_2', name: 'Cottage 2', baseRatePerNight: 3000, isActive: true },
+  { id: 'unit_full_villa', name: 'Full Villa', baseRatePerNight: 15000, baseCapacity: 10, extraAdultRate: 1000, extraChildRate: 500, isActive: true },
+  { id: 'unit_gf', name: 'Ground Floor', baseRatePerNight: 8000, baseCapacity: 6, extraAdultRate: 1000, extraChildRate: 500, isActive: true },
+  { id: 'unit_ff', name: 'First Floor', baseRatePerNight: 6000, baseCapacity: 4, extraAdultRate: 1000, extraChildRate: 500, isActive: true },
+  { id: 'unit_cottages_all', name: 'Both Cottages', baseRatePerNight: 6000, baseCapacity: 4, extraAdultRate: 800, extraChildRate: 400, isActive: true },
+  { id: 'unit_cottage_1', name: 'Cottage 1', baseRatePerNight: 3000, baseCapacity: 2, extraAdultRate: 800, extraChildRate: 400, isActive: true },
+  { id: 'unit_cottage_2', name: 'Cottage 2', baseRatePerNight: 3000, baseCapacity: 2, extraAdultRate: 800, extraChildRate: 400, isActive: true },
 ];
 
 export const DEFAULT_EXPENSE_CATEGORIES: string[] = [

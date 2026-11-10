@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee,
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings } from '../../types';
 import { calculateStayDays, validateIndianPhone, formatCurrencyINR } from '../../utils/formatters';
 import { checkBookingConflict } from '../../utils/bookingConflict';
+import { calculateStayTariff, TariffCalculationResult } from '../../utils/tariffCalculator';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     idProofFileUrl: '',
     adults: 2,
     children: 0,
+    infants: 0,
     unitAllotted: settings.units[0]?.name || 'Full Villa',
     bookingDate: todayStr,
     checkInDate: todayStr,
@@ -68,16 +70,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return checkBookingConflict(formData, existingBookings || []);
   }, [formData, existingBookings]);
 
-  // Rate and formula calculation: One night charge × stay nights for all 6 unit categories
+  // Rate and tariff calculation (Base fixed rate + extra person charges) × stay nights
   const [isManualTotal, setIsManualTotal] = useState(false);
 
-  const selectedUnit = useMemo(() => {
-    return settings.units.find(u => u.name === formData.unitAllotted) || settings.units[0];
-  }, [settings.units, formData.unitAllotted]);
-
-  const baseRatePerNight = selectedUnit ? selectedUnit.baseRatePerNight : 15000;
   const stayDaysCount = formData.stayDays || 1;
-  const calculatedTotalPayable = baseRatePerNight * stayDaysCount;
+  const tariffResult = useMemo(() => {
+    return calculateStayTariff(
+      formData.unitAllotted || 'Full Villa',
+      Number(formData.adults) || 0,
+      Number(formData.children) || 0,
+      stayDaysCount,
+      Number(formData.infants) || 0,
+      settings.units
+    );
+  }, [formData.unitAllotted, formData.adults, formData.children, formData.infants, stayDaysCount, settings.units]);
+
+  const calculatedTotalPayable = tariffResult.totalPayableAmount;
 
   // Dedicated "Tab to Add Balance Amount" state inside modal
   const [showAddBalanceTab, setShowAddBalanceTab] = useState(false);
@@ -146,6 +154,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         idProofFileUrl: '',
         adults: 2,
         children: 0,
+        infants: 0,
         unitAllotted: defaultUnit?.name || 'Full Villa',
         bookingDate: todayStr,
         checkInDate: todayStr,
@@ -167,16 +176,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [bookingToEdit, nextSrNo, isOpen, settings]);
 
-  // Recalculate stay days, total amount (1 Night Charge × Total Stay Nights), and balance whenever dates or room changes
+  // Recalculate stay days, total amount (tariff × stay nights), and balance whenever dates, room, or guests change
   useEffect(() => {
     if (!formData.checkInDate || !formData.checkOutDate) return;
     const days = calculateStayDays(formData.checkInDate, formData.checkOutDate);
-    const unit = settings.units.find(u => u.name === formData.unitAllotted) || settings.units[0];
-    const rate = unit ? unit.baseRatePerNight : 15000;
-    const formulaTotal = rate * days;
+    const tariff = calculateStayTariff(
+      formData.unitAllotted || 'Full Villa',
+      Number(formData.adults) || 0,
+      Number(formData.children) || 0,
+      days,
+      Number(formData.infants) || 0,
+      settings.units
+    );
+    const formulaTotal = tariff.totalPayableAmount;
 
     setFormData(prev => {
-      // Multiply one night charge by total stay nights (e.g. 15,000 x 3 = 45,000)
       const shouldAutoCalc = !isManualTotal || !prev.totalAmount;
       const total = shouldAutoCalc ? formulaTotal : Number(prev.totalAmount || 0);
       const advance = shouldAutoCalc ? Math.round(total / 2) : Number(prev.advancePaid || 0);
@@ -199,24 +213,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         balanceStatus: prev.balanceStatus || balanceStatus,
       };
     });
-  }, [formData.checkInDate, formData.checkOutDate, formData.unitAllotted, settings.units, isManualTotal]);
+  }, [
+    formData.checkInDate,
+    formData.checkOutDate,
+    formData.unitAllotted,
+    formData.adults,
+    formData.children,
+    formData.infants,
+    settings.units,
+    isManualTotal
+  ]);
 
   if (!isOpen) return null;
 
-  // Handle Unit selection with auto-suggested base rate (rate × stay days)
+  // Handle Unit selection with auto-suggested base rate (rate × stay days + extra guest charges)
   const handleUnitChange = (unitName: string) => {
     setIsManualTotal(false);
-    const selected = settings.units.find(u => u.name === unitName);
     const days = formData.stayDays || 1;
-    const rate = selected ? selected.baseRatePerNight : 15000;
-    const calculatedTotal = rate * days;
+    const tariff = calculateStayTariff(
+      unitName,
+      Number(formData.adults) || 0,
+      Number(formData.children) || 0,
+      days,
+      Number(formData.infants) || 0,
+      settings.units
+    );
+    const calculatedTotal = tariff.totalPayableAmount;
     const advance = Math.round(calculatedTotal / 2);
     setFormData(prev => ({
       ...prev,
       unitAllotted: unitName,
       totalAmount: calculatedTotal,
       advancePaid: advance,
-      balanceAmount: calculatedTotal - advance,
+      balanceAmount: Math.max(0, calculatedTotal - advance),
     }));
   };
 
@@ -282,6 +311,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       idProofFileUrl: formData.idProofFileUrl || '',
       adults: Math.max(0, parseInt(String(formData.adults ?? 0), 10) || 0),
       children: Math.max(0, parseInt(String(formData.children ?? 0), 10) || 0),
+      infants: Math.max(0, parseInt(String(formData.infants ?? 0), 10) || 0),
       unitAllotted: formData.unitAllotted || 'Full Villa',
       bookingDate: formData.bookingDate || todayStr,
       checkInDate: formData.checkInDate || todayStr,
@@ -504,26 +534,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Residential Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="Street / Society address"
-                  value={formData.address}
-                  onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Residential Address
+              </label>
+              <input
+                type="text"
+                placeholder="Street / Society address"
+                value={formData.address}
+                onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+              />
+            </div>
 
-              <div>
+            {/* 3-Tier Guest Breakdown according to occupancy policy */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-200">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    No. of Adults / Guests
+                  <label className="block text-xs font-bold text-slate-800">
+                    Adults (12+ Yrs) <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[10px] text-emerald-700 font-medium">0 to any number</span>
+                  <span className="text-[10px] text-slate-500 font-medium font-mono">
+                    ₹{tariffResult.extraAdultRate}/extra
+                  </span>
                 </div>
                 <input
                   type="number"
@@ -542,16 +575,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       setFormData(prev => ({ ...prev, adults: 0 }));
                     }
                   }}
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
+                  className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">Age 12+ considered adult</p>
               </div>
 
-              <div>
+              <div className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-200">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Children (5 - 10 Yrs)
+                  <label className="block text-xs font-bold text-slate-800">
+                    Children (5 - 12 Yrs)
                   </label>
-                  <span className="text-[10px] text-emerald-700 font-medium">0 to any number</span>
+                  <span className="text-[10px] text-slate-500 font-medium font-mono">
+                    ₹{tariffResult.extraChildRate}/extra
+                  </span>
                 </div>
                 <input
                   type="number"
@@ -570,20 +606,77 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       setFormData(prev => ({ ...prev, children: 0 }));
                     }
                   }}
-                  className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
+                  className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">Above base limit: ₹{tariffResult.extraChildRate}/nt</p>
+              </div>
+
+              <div className="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-200">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-emerald-950">
+                    Children Below 5 Yrs
+                  </label>
+                  <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
+                    Free / ₹0
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.infants === undefined ? '' : formData.infants}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData(prev => ({
+                      ...prev,
+                      infants: val === '' ? ('' as any) : Math.max(0, parseInt(val, 10) || 0),
+                    }));
+                  }}
+                  onBlur={e => {
+                    if (e.target.value === '' || isNaN(Number(e.target.value))) {
+                      setFormData(prev => ({ ...prev, infants: 0 }));
+                    }
+                  }}
+                  className="w-full text-xs font-semibold bg-white border border-emerald-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
+                />
+                <p className="text-[10px] text-emerald-700 mt-1">Complimentary (0 charges)</p>
               </div>
             </div>
 
-            {/* Total Guest Count Summary Badge */}
-            <div className="flex items-center justify-between bg-emerald-50/70 border border-emerald-200/80 rounded-lg px-3 py-1.5 text-xs text-emerald-900">
-              <span className="font-medium text-emerald-800">Total Guests Count:</span>
-              <span className="font-bold font-mono bg-emerald-100 text-emerald-950 px-2.5 py-0.5 rounded-md border border-emerald-300/60 text-xs">
-                {(Number(formData.adults) || 0) + (Number(formData.children) || 0)} Guests
-                <span className="text-[11px] font-normal text-emerald-700 ml-1.5">
-                  ({Number(formData.adults) || 0} Adults{Number(formData.children) > 0 ? ` + ${Number(formData.children)} Children` : ''})
+            {/* Total Guest Count & Fixed Occupancy Breakdown Badge */}
+            <div className={`p-2.5 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+              tariffResult.hasExtraGuests
+                ? 'bg-amber-50/80 border-amber-300 text-amber-950'
+                : 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+            }`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold">Total Guests:</span>
+                <span className="font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-slate-300 text-slate-900">
+                  {(Number(formData.adults) || 0) + (Number(formData.children) || 0) + (Number(formData.infants) || 0)} Guests
                 </span>
-              </span>
+                <span className="text-[11px] text-slate-600">
+                  ({Number(formData.adults) || 0} Adults, {Number(formData.children) || 0} Kids 5-12y
+                  {Number(formData.infants) > 0 ? `, ${Number(formData.infants)} Kids <5y` : ''})
+                </span>
+              </div>
+
+              <div className="text-[11px] font-semibold text-right">
+                {tariffResult.hasExtraGuests ? (
+                  <span className="text-amber-900">
+                    Fixed {tariffResult.baseCapacity} guests +{' '}
+                    <span className="font-bold underline">
+                      {tariffResult.extraAdults > 0 ? `${tariffResult.extraAdults} extra adult${tariffResult.extraAdults > 1 ? 's' : ''} (₹${tariffResult.extraAdultRate * tariffResult.extraAdults}/nt)` : ''}
+                      {tariffResult.extraAdults > 0 && tariffResult.extraChildren > 0 ? ', ' : ''}
+                      {tariffResult.extraChildren > 0 ? `${tariffResult.extraChildren} extra child (₹${tariffResult.extraChildRate * tariffResult.extraChildren}/nt)` : ''}
+                    </span>
+                    {' '}= +₹{tariffResult.totalExtraChargesPerNight.toLocaleString('en-IN')}/nt
+                  </span>
+                ) : (
+                  <span className="text-emerald-800">
+                    ✓ Within fixed base capacity of {tariffResult.baseCapacity} guests (₹{tariffResult.baseRatePerNight.toLocaleString('en-IN')}/nt)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* ID Proof Fields */}
@@ -846,6 +939,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     className="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
                   />
                 </div>
+                {tariffResult.hasExtraGuests && (
+                  <p className="text-[10px] text-amber-700 font-semibold mt-1">
+                    Incl. ₹{(tariffResult.totalExtraChargesPerNight * stayDaysCount).toLocaleString('en-IN')} extra guest fee ({stayDaysCount} nt)
+                  </p>
+                )}
               </div>
 
               <div>

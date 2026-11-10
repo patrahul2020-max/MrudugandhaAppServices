@@ -164,7 +164,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 {formatDateINR(booking.checkInDate)} to {formatDateINR(booking.checkOutDate)}
               </div>
               <div className="text-slate-500 font-medium mt-0.5">
-                Duration: <span className="font-bold text-slate-800">{stayDays} Night{stayDays > 1 ? 's' : ''}</span> · {(booking.adults || 0) + (booking.children || 0) === 0 ? '0 Guests' : `${booking.adults ?? 0} Adults${(booking.children || 0) > 0 ? ` + ${booking.children} Kids` : ''}`}
+                Duration: <span className="font-bold text-slate-800">{stayDays} Night{stayDays > 1 ? 's' : ''}</span> · {(booking.adults || 0) + (booking.children || 0) + (booking.infants || 0) === 0 ? '0 Guests' : `${booking.adults ?? 0} Adults${(booking.children || 0) > 0 ? ` + ${booking.children} Kids` : ''}${booking.infants ? ` + ${booking.infants} <5y` : ''}`}
               </div>
             </div>
           </div>

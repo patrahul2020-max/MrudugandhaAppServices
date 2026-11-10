@@ -53,7 +53,7 @@ Phone: +91 ${booking.phone}
 Address: ${booking.address || '—'}, ${booking.city || '—'}
 ID Type: ${booking.idProofType}
 ID Number: ${booking.idProofNumber || 'Verified in person'}
-Adults: ${booking.adults}, Children: ${booking.children}
+Adults: ${booking.adults}, Children (5-12y): ${booking.children || 0}${booking.infants ? `, Below 5y (Free): ${booking.infants}` : ''}
 Unit Allotted: ${booking.unitAllotted}
 Check-in: ${formatDateINR(booking.checkInDate)} ${formatTime12Hr(booking.checkInTime)}
 Check-out: ${formatDateINR(booking.checkOutDate)} ${formatTime12Hr(booking.checkOutTime)}
@@ -222,7 +222,7 @@ Nights: ${booking.stayDays}`;
               <div className="p-3">
                 <span className="text-[10px] uppercase text-slate-500 block font-semibold">Guests Count</span>
                 <span className="font-semibold text-slate-900">
-                  {(booking.adults || 0) + (booking.children || 0) === 0 ? '0 Guests' : `${booking.adults ?? 0} Adults${(booking.children || 0) > 0 ? ` + ${booking.children} Kids` : ''}`}
+                  {(booking.adults || 0) + (booking.children || 0) + (booking.infants || 0) === 0 ? '0 Guests' : `${booking.adults ?? 0} Adults${(booking.children || 0) > 0 ? ` + ${booking.children} Kids` : ''}${booking.infants ? ` + ${booking.infants} <5y` : ''}`}
                 </span>
               </div>
               <div className="p-3">

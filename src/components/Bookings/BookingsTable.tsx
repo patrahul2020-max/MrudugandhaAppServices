@@ -26,6 +26,7 @@ import { Booking, BalanceStatus, CheckInStatus, PropertySettings, UserProfile } 
 import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
 import { checkBookingConflict } from '../../utils/bookingConflict';
+import { calculateStayTariff } from '../../utils/tariffCalculator';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -421,13 +422,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [quickAdvance, setQuickAdvance] = useState<number>(Math.round((settings.units[0]?.baseRatePerNight || 15000) / 2));
   const [quickChannel, setQuickChannel] = useState('Airbnb');
 
-  // Rate and stay calculation for Quick Add bar: 1 night charge × stay nights for all 6 categories
-  const quickUnitObj = useMemo(() => {
-    return settings.units.find(x => x.name === quickUnit) || settings.units[0];
-  }, [settings.units, quickUnit]);
-
-  const quickRatePerNight = quickUnitObj ? quickUnitObj.baseRatePerNight : 15000;
-
+  // Rate and stay calculation for Quick Add bar (calculateStayTariff for unit & nights)
   const quickStayDays = useMemo(() => {
     if (!quickCheckIn || !quickCheckOut) return 1;
     const start = new Date(quickCheckIn).getTime();
@@ -436,7 +431,16 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
     return Math.max(1, isNaN(diff) ? 1 : diff);
   }, [quickCheckIn, quickCheckOut]);
 
-  const quickCalculatedTotal = quickRatePerNight * quickStayDays;
+  const quickCalculatedTotal = useMemo(() => {
+    return calculateStayTariff(
+      quickUnit,
+      2, // default 2 adults
+      0, // default 0 children
+      quickStayDays,
+      0, // default 0 infants
+      settings.units
+    ).totalPayableAmount;
+  }, [quickUnit, quickStayDays, settings.units]);
 
   // Auto-synchronize quickTotal and quickAdvance whenever unit or stay dates change
   useEffect(() => {
@@ -489,6 +493,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
       idProofNumber: '',
       adults: 2,
       children: 0,
+      infants: 0,
       unitAllotted: quickUnit,
       bookingDate: todayStr,
       checkInDate: quickCheckIn,
@@ -1053,7 +1058,9 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                         );
                       })()}
                       <span className="text-[10px] text-slate-600 block mt-0.5 font-mono">
-                        {(b.adults || 0) + (b.children || 0) === 0 ? '0 Guests' : `${b.adults ?? 0} Adults${(b.children || 0) > 0 ? ` + ${b.children} Kids` : ''}`}
+                        {(b.adults || 0) + (b.children || 0) + (b.infants || 0) === 0
+                          ? '0 Guests'
+                          : `${b.adults ?? 0} Adults${(b.children || 0) > 0 ? ` + ${b.children} Kids` : ''}${b.infants ? ` + ${b.infants} <5y` : ''}`}
                       </span>
                     </div>
 
@@ -1348,12 +1355,13 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
 
                       {/* Pax (Adults + Kids) */}
                       <td className="py-2.5 px-3 text-center font-mono">
-                        {(b.adults || 0) + (b.children || 0) === 0 ? (
+                        {(b.adults || 0) + (b.children || 0) + (b.infants || 0) === 0 ? (
                           <span className="text-slate-400">0</span>
                         ) : (
                           <>
                             <span>{b.adults ?? 0}A</span>
                             {(b.children || 0) > 0 && <span className="text-slate-500 ml-1">+{b.children}C</span>}
+                            {(b.infants || 0) > 0 && <span className="text-emerald-700 ml-1 font-semibold" title="Complimentary below 5y">+{b.infants}I</span>}
                           </>
                         )}
                       </td>
