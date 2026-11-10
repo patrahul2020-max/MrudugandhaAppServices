@@ -24,8 +24,59 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-      // Suppress Vite HMR WebSocket disconnect noise in AI Studio preview
+      // In AI Studio preview, HMR WebSocket is disabled (per environment constraints: "HMR: Disabled. Ignore WebSocket errors.")
+      // Provide a clean no-op WebSocket for Vite HMR ('vite-hmr') so @vite/client never fails or throws connection errors
       (function() {
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          const OrigWS = window.WebSocket;
+          function ViteSafeWebSocket(url, protocols) {
+            const isViteHmr =
+              (typeof protocols === 'string' && protocols === 'vite-hmr') ||
+              (Array.isArray(protocols) && protocols.includes('vite-hmr')) ||
+              (typeof url === 'string' && (url.includes('token=') || url.includes('/@vite')));
+
+            if (isViteHmr) {
+              // Return a silent mock socket with readyState OPEN (1)
+              const mock = {
+                url: String(url),
+                readyState: 1, // WebSocket.OPEN
+                CONNECTING: 0,
+                OPEN: 1,
+                CLOSING: 2,
+                CLOSED: 3,
+                bufferedAmount: 0,
+                extensions: '',
+                protocol: 'vite-hmr',
+                binaryType: 'blob',
+                onopen: null,
+                onclose: null,
+                onerror: null,
+                onmessage: null,
+                send() {},
+                close() {},
+                addEventListener(type, listener) {
+                  if (type === 'open') {
+                    setTimeout(() => {
+                      if (typeof listener === 'function') listener(new Event('open'));
+                    }, 0);
+                  }
+                },
+                removeEventListener() {},
+                dispatchEvent() { return true; }
+              };
+              return mock;
+            }
+            return new OrigWS(url, protocols);
+          }
+          ViteSafeWebSocket.prototype = OrigWS.prototype;
+          ViteSafeWebSocket.CONNECTING = 0;
+          ViteSafeWebSocket.OPEN = 1;
+          ViteSafeWebSocket.CLOSING = 2;
+          ViteSafeWebSocket.CLOSED = 3;
+          window.WebSocket = ViteSafeWebSocket;
+        }
+
+        // Also suppress any console errors or unhandled rejections referencing WebSocket or [vite]
         function isViteHmrError(msg, err) {
           const str = (String(msg || '') + ' ' + String(err?.message || '') + ' ' + String(err?.stack || '')).toLowerCase();
           return str.includes('websocket') || str.includes('[vite]') || str.includes('@vite/client');
