@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee, BedDouble, AlertCircle, Sparkles, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Calendar, Clock, User, Phone, MapPin, FileText, Upload, IndianRupee, BedDouble, AlertCircle, Sparkles, Trash2, Ban } from 'lucide-react';
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings } from '../../types';
 import { calculateStayDays, validateIndianPhone, formatCurrencyINR } from '../../utils/formatters';
+import { checkBookingConflict } from '../../utils/bookingConflict';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface BookingModalProps {
   bookingToEdit: Booking | null;
   nextSrNo: number;
   settings: PropertySettings;
+  existingBookings?: Booking[];
   isOwner?: boolean;
   onDelete?: (id: string) => void;
 }
@@ -21,6 +23,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   bookingToEdit,
   nextSrNo,
   settings,
+  existingBookings,
   isOwner,
   onDelete,
 }) => {
@@ -59,6 +62,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [customChannelInput, setCustomChannelInput] = useState('');
   const [showCustomChannel, setShowCustomChannel] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+
+  // Proactive real-time duplication / overlapping check against existing active bookings
+  const conflictResult = useMemo(() => {
+    return checkBookingConflict(formData, existingBookings || []);
+  }, [formData, existingBookings]);
 
   // Dedicated "Tab to Add Balance Amount" state inside modal
   const [showAddBalanceTab, setShowAddBalanceTab] = useState(false);
@@ -216,6 +224,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (conflictResult.hasConflict) {
+      alert(`⚠️ Duplicate Booking Conflict!\n\n${conflictResult.conflictReason}\n\nOverlapping bookings for the same unit or category are strictly not allowed. Please change the stay dates or select an alternate vacant unit.`);
+      return;
+    }
+
     if (!formData.guestName?.trim()) {
       alert('Primary Guest Name is required');
       return;
@@ -298,6 +311,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
         {/* Modal Body Form */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-h-[82vh] overflow-y-auto">
+          {/* Duplicate / Overlap Conflict Warning Banner */}
+          {conflictResult.hasConflict && (
+            <div className="p-3.5 sm:p-4 bg-rose-50 border-2 border-rose-400 rounded-xl text-rose-950 flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
+              <div className="w-8 h-8 rounded-lg bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0 text-rose-700">
+                <Ban className="w-5 h-5" />
+              </div>
+              <div className="space-y-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-xs uppercase tracking-wider text-rose-900 bg-rose-200/90 px-2 py-0.5 rounded">
+                    ⚠️ Duplicate Booking Conflict
+                  </span>
+                  <span className="text-[11px] font-bold text-rose-700">
+                    Cannot Save This Reservation
+                  </span>
+                </div>
+                <p className="text-xs text-rose-900 font-semibold leading-relaxed mt-1">
+                  {conflictResult.conflictReason}
+                </p>
+                <p className="text-[11px] text-rose-800">
+                  Overlapping bookings for the same room or composite category are strictly not allowed. Please choose different stay dates or select an alternate vacant unit to proceed.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Referral & Unit Allocation */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2 border-b border-slate-100 pb-1.5">
@@ -660,6 +698,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </span>
               </div>
             </div>
+
+            {conflictResult.hasConflict && (
+              <div className="p-2.5 bg-rose-100/90 border border-rose-300 rounded-lg text-rose-950 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-700 shrink-0" />
+                <span>
+                  Conflict detected for stay dates {formData.checkInDate} to {formData.checkOutDate}: {conflictResult.conflictReason}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Section 4: Financials & Payment Tracking */}
@@ -923,9 +970,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             <button
               type="submit"
-              className="px-6 py-2.5 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg transition-colors shadow-sm cursor-pointer"
+              disabled={conflictResult.hasConflict}
+              className={`px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-2 ${
+                conflictResult.hasConflict
+                  ? 'bg-rose-100 text-rose-800 border-2 border-rose-300 cursor-not-allowed opacity-90'
+                  : 'text-white bg-emerald-800 hover:bg-emerald-900 cursor-pointer active:scale-98'
+              }`}
+              title={conflictResult.hasConflict ? 'Cannot save due to duplicate overlapping booking conflict' : 'Confirm and save booking'}
             >
-              {bookingToEdit ? 'Save Changes' : 'Confirm & Save Booking'}
+              {conflictResult.hasConflict ? (
+                <>
+                  <Ban className="w-4 h-4 text-rose-700" />
+                  <span>Duplicate Conflict (Cannot Save)</span>
+                </>
+              ) : (
+                <span>{bookingToEdit ? 'Save Changes' : 'Confirm & Save Booking'}</span>
+              )}
             </button>
           </div>
         </form>

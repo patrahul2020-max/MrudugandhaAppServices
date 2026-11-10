@@ -25,6 +25,7 @@ import {
 import { Booking, BalanceStatus, CheckInStatus, PropertySettings, UserProfile } from '../../types';
 import { formatDateINR, formatCurrencyINR, downloadCSV, formatTime12Hr } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
+import { checkBookingConflict } from '../../utils/bookingConflict';
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -420,10 +421,29 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [quickAdvance, setQuickAdvance] = useState<number>(Math.round((settings.units[0]?.baseRatePerNight || 15000) / 2));
   const [quickChannel, setQuickChannel] = useState('Airbnb');
 
+  // Live conflict checker for Quick Add Bar
+  const quickConflict = useMemo(() => {
+    if (!showQuickAdd) return { hasConflict: false };
+    return checkBookingConflict(
+      {
+        unitAllotted: quickUnit,
+        checkInDate: quickCheckIn,
+        checkOutDate: quickCheckOut,
+        status: 'Upcoming',
+      },
+      bookings
+    );
+  }, [showQuickAdd, quickUnit, quickCheckIn, quickCheckOut, bookings]);
+
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickGuestName.trim()) {
       alert('Please enter guest name');
+      return;
+    }
+
+    if (quickConflict.hasConflict) {
+      alert(`⚠️ Duplicate Booking Conflict!\n\n${quickConflict.conflictReason}\n\nOverlapping reservations for the same unit or composite category are strictly not allowed. Please choose different stay dates or an alternate vacant room.`);
       return;
     }
 
@@ -622,7 +642,23 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
+          {/* Quick Add Overlap Conflict Warning Banner */}
+          {quickConflict.hasConflict && (
+            <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-lg text-rose-950 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in duration-150">
+              <span className="text-rose-600 font-bold text-sm shrink-0">⚠️</span>
+              <div>
+                <span className="font-bold text-rose-900 uppercase tracking-wider block text-[10px]">
+                  Duplicate Booking Conflict (Cannot Save)
+                </span>
+                <p className="mt-0.5 text-rose-900 font-medium">{quickConflict.conflictReason}</p>
+                <span className="text-[11px] text-rose-700 font-normal block mt-0.5">
+                  Overlapping stays for the same category are not permitted. Please pick alternate dates or allot another vacant unit.
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
             <span className="text-[11px] text-slate-500">
               Need ID proofs, police slips or notes? Click <strong>+ Add New Booking</strong> for full form.
             </span>
@@ -630,15 +666,25 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <button
                 type="button"
                 onClick={onNewBooking}
-                className="px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+                className="px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer"
               >
                 Open Full Form...
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg shadow-xs cursor-pointer"
+                disabled={quickConflict.hasConflict}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 ${
+                  quickConflict.hasConflict
+                    ? 'bg-rose-100 text-rose-800 border-2 border-rose-300 cursor-not-allowed opacity-90'
+                    : 'text-white bg-emerald-800 hover:bg-emerald-900 cursor-pointer'
+                }`}
+                title={quickConflict.hasConflict ? 'Cannot save due to duplicate booking conflict' : 'Save quick booking'}
               >
-                ✓ Save Quick Booking
+                {quickConflict.hasConflict ? (
+                  <span>⚠️ Duplicate Conflict (Blocked)</span>
+                ) : (
+                  <span>✓ Save Quick Booking</span>
+                )}
               </button>
             </div>
           </div>

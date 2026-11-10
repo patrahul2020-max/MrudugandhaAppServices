@@ -25,6 +25,7 @@ import {
   resetToDemoData,
   DEFAULT_SETTINGS
 } from './utils/storage';
+import { checkBookingConflict } from './utils/bookingConflict';
 import {
   getActiveUser,
   setActiveUser as persistActiveUser,
@@ -256,8 +257,18 @@ export default function App() {
     return maxSr >= 100 ? maxSr + 1 : 101;
   }, [bookings]);
 
-  // Booking handlers with Cloud Sync
+  // Booking handlers with Cloud Sync & Duplication Conflict Prevention
   const handleSaveBooking = (booking: Booking) => {
+    // Check for duplicate / overlapping booking conflict
+    if (booking.status !== 'Cancelled') {
+      const conflict = checkBookingConflict(booking, bookings);
+      if (conflict.hasConflict) {
+        showToast(`⚠️ Cannot save: duplicate booking conflict detected`);
+        alert(`⚠️ Duplicate Booking Conflict!\n\n${conflict.conflictReason}\n\nOverlapping reservations for the same unit or composite category are strictly not allowed.`);
+        return;
+      }
+    }
+
     let updated: Booking[];
     const exists = bookings.some(b => b.id === booking.id);
     if (exists) {
@@ -286,6 +297,17 @@ export default function App() {
   const handleQuickUpdateStatus = (id: string, status: CheckInStatus) => {
     const b = bookings.find(x => x.id === id);
     if (!b) return;
+
+    if (status !== 'Cancelled') {
+      const candidate = { ...b, status };
+      const conflict = checkBookingConflict(candidate, bookings);
+      if (conflict.hasConflict) {
+        showToast(`⚠️ Cannot change status: ${conflict.conflictReason}`);
+        alert(`⚠️ Duplicate Booking Conflict!\n\n${conflict.conflictReason}\n\nCannot activate this booking because its room is currently occupied by another reservation.`);
+        return;
+      }
+    }
+
     const updatedBooking = { ...b, status, updatedAt: new Date().toISOString() };
     const updated = bookings.map(x => (x.id === id ? updatedBooking : x));
     setBookings(updated);
@@ -518,6 +540,7 @@ export default function App() {
         bookingToEdit={bookingToEdit}
         nextSrNo={nextSrNo}
         settings={settings}
+        existingBookings={bookings}
         isOwner={Boolean(activeUser && (activeUser.id === 'user_owner' || activeUser.role?.toLowerCase().includes('owner') || activeUser.name?.toLowerCase().includes('rahul')))}
         onDelete={handleDeleteBooking}
       />

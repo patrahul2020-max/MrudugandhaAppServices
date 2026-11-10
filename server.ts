@@ -16,6 +16,7 @@ import {
   fetchUsersFromDb,
   seedDefaultUsers,
 } from './src/db/repository.ts';
+import { checkBookingConflict } from './src/utils/bookingConflict.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const currentDir = path.dirname(__filename);
@@ -369,6 +370,19 @@ app.post('/api/bookings', async (req, res) => {
   const booking = req.body;
   if (!booking || !booking.id) {
     return res.status(400).json({ success: false, error: 'Invalid booking data' });
+  }
+
+  // Prevent duplicate overlapping bookings for same unit/category
+  if (booking.status !== 'Cancelled') {
+    const conflict = checkBookingConflict(booking, inMemoryDb.bookings);
+    if (conflict.hasConflict) {
+      return res.status(409).json({
+        success: false,
+        error: `Duplicate booking conflict: ${conflict.conflictReason}`,
+        conflictReason: conflict.conflictReason,
+        conflictingBooking: conflict.conflictingBooking,
+      });
+    }
   }
 
   try {
