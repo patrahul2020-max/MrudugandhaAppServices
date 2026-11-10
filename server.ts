@@ -18,7 +18,13 @@ import {
 } from './src/db/repository.ts';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentDir = path.dirname(__filename);
+
+// In tsx under Node 22, tsx defines global.__dirname = '.', which breaks ESM libraries
+// (like vite-plugin-pwa) that check `typeof __dirname !== 'undefined' ? __dirname : fileURLToPath(...)`
+// Deleting it ensures Vite and ESM plugins correctly use their own import.meta.url
+delete (global as any).__dirname;
+delete (globalThis as any).__dirname;
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -27,7 +33,7 @@ const PORT = 3000;
 app.use(express.json({ limit: '25mb' }));
 
 // Persistent Cloud DB & Backup Directories
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = path.join(currentDir, 'data');
 const DB_FILE = path.join(DATA_DIR, 'cloud_database.json');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 
@@ -668,7 +674,7 @@ app.post('/api/backup/restore', (req, res) => {
 // Start server with Vite middleware in dev or static files in production
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const distPath = path.join(__dirname, 'dist');
+  const distPath = path.join(currentDir, 'dist');
   const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'index.html'));
 
   if (isProduction && hasDist) {
@@ -696,11 +702,13 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  // Synchronize initial data from Cloud SQL PostgreSQL
-  await syncFromCloudSql();
-
+  // Start HTTP listener immediately so dev server health check passes in <50ms
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Mrudugandha Guesthouse Management Server running on http://0.0.0.0:${PORT} [${isProduction && hasDist ? 'production' : 'development'}]`);
+    // Synchronize initial data from Cloud SQL PostgreSQL asynchronously in background
+    syncFromCloudSql().catch(err => {
+      console.error('Initial Cloud SQL sync notice (using local cache):', err);
+    });
   });
 }
 
