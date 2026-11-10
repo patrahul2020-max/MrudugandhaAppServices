@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -421,6 +421,29 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
   const [quickAdvance, setQuickAdvance] = useState<number>(Math.round((settings.units[0]?.baseRatePerNight || 15000) / 2));
   const [quickChannel, setQuickChannel] = useState('Airbnb');
 
+  // Rate and stay calculation for Quick Add bar: 1 night charge × stay nights for all 6 categories
+  const quickUnitObj = useMemo(() => {
+    return settings.units.find(x => x.name === quickUnit) || settings.units[0];
+  }, [settings.units, quickUnit]);
+
+  const quickRatePerNight = quickUnitObj ? quickUnitObj.baseRatePerNight : 15000;
+
+  const quickStayDays = useMemo(() => {
+    if (!quickCheckIn || !quickCheckOut) return 1;
+    const start = new Date(quickCheckIn).getTime();
+    const end = new Date(quickCheckOut).getTime();
+    const diff = Math.round((end - start) / (1000 * 3600 * 24));
+    return Math.max(1, isNaN(diff) ? 1 : diff);
+  }, [quickCheckIn, quickCheckOut]);
+
+  const quickCalculatedTotal = quickRatePerNight * quickStayDays;
+
+  // Auto-synchronize quickTotal and quickAdvance whenever unit or stay dates change
+  useEffect(() => {
+    setQuickTotal(quickCalculatedTotal);
+    setQuickAdvance(Math.round(quickCalculatedTotal / 2));
+  }, [quickCalculatedTotal]);
+
   // Live conflict checker for Quick Add Bar
   const quickConflict = useMemo(() => {
     if (!showQuickAdd) return { hasConflict: false };
@@ -553,10 +576,33 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             <button
               type="button"
               onClick={() => setShowQuickAdd(false)}
-              className="text-slate-400 hover:text-slate-600 text-xs"
+              className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
             >
               ✕ Close
             </button>
+          </div>
+
+          {/* Prominent Rate × Stay Nights Payable Formula Display */}
+          <div className="bg-white/95 border-2 border-emerald-400 rounded-lg p-2.5 flex items-center justify-between text-xs flex-wrap gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-800 text-white shadow-2xs">
+                Payable Formula
+              </span>
+              <span className="font-bold text-slate-900">{quickUnit}</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono text-xs flex-wrap">
+              <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold border border-slate-300">
+                ₹{quickRatePerNight.toLocaleString('en-IN')} <span className="font-normal text-[10px] text-slate-500">/ night</span>
+              </span>
+              <span className="font-black text-emerald-700">×</span>
+              <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold border border-slate-300">
+                {quickStayDays} Night{quickStayDays > 1 ? 's' : ''}
+              </span>
+              <span className="font-black text-emerald-700">=</span>
+              <span className="bg-emerald-900 text-amber-200 px-2.5 py-0.5 rounded font-black border border-emerald-950 text-sm shadow-2xs">
+                ₹{quickCalculatedTotal.toLocaleString('en-IN')} Total Payable
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-2.5 text-xs">
@@ -588,19 +634,12 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
               <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Unit / Room</label>
               <select
                 value={quickUnit}
-                onChange={e => {
-                  const u = settings.units.find(x => x.name === e.target.value);
-                  setQuickUnit(e.target.value);
-                  if (u) {
-                    setQuickTotal(u.baseRatePerNight);
-                    setQuickAdvance(Math.round(u.baseRatePerNight / 2));
-                  }
-                }}
-                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                onChange={e => setQuickUnit(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-semibold"
               >
                 {settings.units.filter(u => u.isActive).map(u => (
                   <option key={u.id} value={u.name}>
-                    {u.name}
+                    {u.name} (₹{u.baseRatePerNight.toLocaleString('en-IN')}/night)
                   </option>
                 ))}
               </select>
@@ -629,7 +668,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Total Tariff (₹)</label>
+              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Total Payable (₹)</label>
               <input
                 type="number"
                 step="any"
@@ -639,6 +678,9 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                 onChange={e => setQuickTotal(parseFloat(e.target.value) || 0)}
                 className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
               />
+              <span className="text-[10px] font-bold text-emerald-800 block mt-0.5 font-mono truncate">
+                ₹{quickRatePerNight.toLocaleString('en-IN')} × {quickStayDays}d
+              </span>
             </div>
           </div>
 

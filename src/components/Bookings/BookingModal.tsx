@@ -68,6 +68,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return checkBookingConflict(formData, existingBookings || []);
   }, [formData, existingBookings]);
 
+  // Rate and formula calculation: One night charge × stay nights for all 6 unit categories
+  const [isManualTotal, setIsManualTotal] = useState(false);
+
+  const selectedUnit = useMemo(() => {
+    return settings.units.find(u => u.name === formData.unitAllotted) || settings.units[0];
+  }, [settings.units, formData.unitAllotted]);
+
+  const baseRatePerNight = selectedUnit ? selectedUnit.baseRatePerNight : 15000;
+  const stayDaysCount = formData.stayDays || 1;
+  const calculatedTotalPayable = baseRatePerNight * stayDaysCount;
+
   // Dedicated "Tab to Add Balance Amount" state inside modal
   const [showAddBalanceTab, setShowAddBalanceTab] = useState(false);
   const [addBalanceInput, setAddBalanceInput] = useState('');
@@ -110,6 +121,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (bookingToEdit) {
       setFormData(bookingToEdit);
+      setIsManualTotal(true);
       const isKnownChannel = settings.customChannels.includes(bookingToEdit.referralSource);
       if (!isKnownChannel) {
         setShowCustomChannel(true);
@@ -118,6 +130,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         setShowCustomChannel(false);
       }
     } else {
+      setIsManualTotal(false);
       const defaultUnit = settings.units.find(u => u.isActive) || settings.units[0];
       const defaultRate = defaultUnit ? defaultUnit.baseRatePerNight : 15000;
       setFormData({
@@ -154,49 +167,57 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [bookingToEdit, nextSrNo, isOpen, settings]);
 
-  // Recalculate stay days and balance whenever relevant fields change
+  // Recalculate stay days, total amount (1 Night Charge × Total Stay Nights), and balance whenever dates or room changes
   useEffect(() => {
     if (!formData.checkInDate || !formData.checkOutDate) return;
     const days = calculateStayDays(formData.checkInDate, formData.checkOutDate);
-    const total = Number(formData.totalAmount || 0);
-    const advance = Number(formData.advancePaid || 0);
-    const balance = Math.max(0, total - advance);
+    const unit = settings.units.find(u => u.name === formData.unitAllotted) || settings.units[0];
+    const rate = unit ? unit.baseRatePerNight : 15000;
+    const formulaTotal = rate * days;
 
-    // Auto-update balanceStatus if it was pending and now fully paid
-    let balanceStatus = formData.balanceStatus || 'Pending';
-    if (balance === 0 && total > 0 && balanceStatus === 'Pending') {
-      balanceStatus = 'Paid via UPI';
-    } else if (balance > 0 && advance > 0 && balanceStatus === 'Pending') {
-      balanceStatus = 'Partial';
-    }
+    setFormData(prev => {
+      // Multiply one night charge by total stay nights (e.g. 15,000 x 3 = 45,000)
+      const shouldAutoCalc = !isManualTotal || !prev.totalAmount;
+      const total = shouldAutoCalc ? formulaTotal : Number(prev.totalAmount || 0);
+      const advance = shouldAutoCalc ? Math.round(total / 2) : Number(prev.advancePaid || 0);
+      const balance = Math.max(0, total - advance);
 
-    setFormData(prev => ({
-      ...prev,
-      stayDays: days,
-      balanceAmount: balance,
-      balanceStatus: prev.balanceStatus || balanceStatus,
-    }));
-  }, [formData.checkInDate, formData.checkOutDate, formData.totalAmount, formData.advancePaid]);
+      // Auto-update balanceStatus if it was pending and now fully paid
+      let balanceStatus = prev.balanceStatus || 'Pending';
+      if (balance === 0 && total > 0 && balanceStatus === 'Pending') {
+        balanceStatus = 'Paid via UPI';
+      } else if (balance > 0 && advance > 0 && balanceStatus === 'Pending') {
+        balanceStatus = 'Partial';
+      }
+
+      return {
+        ...prev,
+        stayDays: days,
+        totalAmount: total,
+        advancePaid: advance,
+        balanceAmount: balance,
+        balanceStatus: prev.balanceStatus || balanceStatus,
+      };
+    });
+  }, [formData.checkInDate, formData.checkOutDate, formData.unitAllotted, settings.units, isManualTotal]);
 
   if (!isOpen) return null;
 
-  // Handle Unit selection with auto-suggested base rate
+  // Handle Unit selection with auto-suggested base rate (rate × stay days)
   const handleUnitChange = (unitName: string) => {
-    const selectedUnit = settings.units.find(u => u.name === unitName);
+    setIsManualTotal(false);
+    const selected = settings.units.find(u => u.name === unitName);
     const days = formData.stayDays || 1;
-    if (selectedUnit) {
-      const calculatedTotal = selectedUnit.baseRatePerNight * days;
-      const advance = Math.round(calculatedTotal / 2);
-      setFormData(prev => ({
-        ...prev,
-        unitAllotted: unitName,
-        totalAmount: calculatedTotal,
-        advancePaid: advance,
-        balanceAmount: calculatedTotal - advance,
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, unitAllotted: unitName }));
-    }
+    const rate = selected ? selected.baseRatePerNight : 15000;
+    const calculatedTotal = rate * days;
+    const advance = Math.round(calculatedTotal / 2);
+    setFormData(prev => ({
+      ...prev,
+      unitAllotted: unitName,
+      totalAmount: calculatedTotal,
+      advancePaid: advance,
+      balanceAmount: calculatedTotal - advance,
+    }));
   };
 
   // Handle Image / ID proof file upload
@@ -656,7 +677,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     type="date"
                     required
                     value={formData.checkInDate}
-                    onChange={e => setFormData(prev => ({ ...prev, checkInDate: e.target.value }))}
+                    onChange={e => {
+                      setIsManualTotal(false);
+                      setFormData(prev => ({ ...prev, checkInDate: e.target.value }));
+                    }}
                     className="col-span-3 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
                   />
                   <input
@@ -677,7 +701,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     type="date"
                     required
                     value={formData.checkOutDate}
-                    onChange={e => setFormData(prev => ({ ...prev, checkOutDate: e.target.value }))}
+                    onChange={e => {
+                      setIsManualTotal(false);
+                      setFormData(prev => ({ ...prev, checkOutDate: e.target.value }));
+                    }}
                     className="col-span-3 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
                   />
                   <input
@@ -689,13 +716,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-2.5 flex flex-col justify-center">
-                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
-                  Stay in Days (Nights)
-                </span>
-                <span className="text-xl font-bold font-mono text-emerald-950 mt-0.5">
-                  {formData.stayDays || 1} Night{(formData.stayDays || 1) > 1 ? 's' : ''}
-                </span>
+              <div className="bg-emerald-50/90 border-2 border-emerald-300 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Stay Duration
+                  </span>
+                  <span className="text-xl font-bold font-mono text-emerald-950 mt-0.5">
+                    {stayDaysCount} Night{stayDaysCount > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="mt-1 pt-1 border-t border-emerald-200/90">
+                  <span className="text-[10px] uppercase font-bold text-emerald-800 block">Tariff × Nights:</span>
+                  <span className="text-xs font-bold font-mono text-emerald-950">
+                    ₹{baseRatePerNight.toLocaleString('en-IN')} × {stayDaysCount} = <strong className="text-emerald-900">₹{calculatedTotalPayable.toLocaleString('en-IN')}</strong>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -794,6 +829,62 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
             )}
 
+            {/* Prominent Rate × Stay Nights Payable Calculation Display */}
+            <div className="bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border-2 border-emerald-400/90 rounded-xl p-3 sm:p-4 shadow-2xs space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-800 text-white shadow-2xs">
+                      Total Payable Calculation
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">
+                      {formData.unitAllotted}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Payable amount is auto-calculated by multiplying 1 night charge by total stay nights:
+                  </p>
+                </div>
+                {formData.totalAmount !== calculatedTotalPayable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManualTotal(false);
+                      const adv = Math.round(calculatedTotalPayable / 2);
+                      setFormData(prev => ({
+                        ...prev,
+                        totalAmount: calculatedTotalPayable,
+                        advancePaid: adv,
+                        balanceAmount: calculatedTotalPayable - adv,
+                      }));
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs cursor-pointer self-start sm:self-auto shrink-0 transition-colors"
+                    title="Reset to exact formula (Rate × Stay Nights)"
+                  >
+                    ↻ Reset to ₹{calculatedTotalPayable.toLocaleString('en-IN')}
+                  </button>
+                )}
+              </div>
+
+              {/* Exact Formula Breakdown Box (e.g. Full Villa 15,000 x 3 = 45,000) */}
+              <div className="flex items-center gap-2 flex-wrap bg-white/95 p-2.5 rounded-lg border border-emerald-300">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono font-bold text-slate-900">
+                  <span>₹{baseRatePerNight.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] font-normal text-slate-500">(1 Night Charge)</span>
+                </div>
+                <span className="text-base font-black text-emerald-700">×</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono font-bold text-slate-900">
+                  <span>{stayDaysCount}</span>
+                  <span className="text-[10px] font-normal text-slate-500">Stay Night{stayDaysCount > 1 ? 's' : ''}</span>
+                </div>
+                <span className="text-base font-black text-emerald-700">=</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-900 text-amber-200 text-sm font-mono font-black shadow-sm">
+                  <span>₹{calculatedTotalPayable.toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Payable Amount</span>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -807,9 +898,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     step="any"
                     required
                     value={formData.totalAmount}
-                    onChange={e => setFormData(prev => ({ ...prev, totalAmount: parseFloat(e.target.value) || 0 }))}
+                    onChange={e => {
+                      setIsManualTotal(true);
+                      const val = parseFloat(e.target.value) || 0;
+                      setFormData(prev => ({
+                        ...prev,
+                        totalAmount: val,
+                        balanceAmount: Math.max(0, val - Number(prev.advancePaid || 0)),
+                      }));
+                    }}
                     className="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
                   />
+                </div>
+                <div className="mt-1 text-[11px] font-semibold text-emerald-800">
+                  Standard: ₹{baseRatePerNight.toLocaleString('en-IN')} × {stayDaysCount} = <strong>₹{calculatedTotalPayable.toLocaleString('en-IN')}</strong>
                 </div>
               </div>
 
