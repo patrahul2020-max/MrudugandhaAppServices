@@ -12,7 +12,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { Booking, Expense, PropertySettings } from '../types';
-import { formatCurrencyINR } from '../utils/formatters';
+import { formatCurrencyINR, getStayUnitsWeight, TOTAL_PHYSICAL_STAY_UNITS } from '../utils/formatters';
 import { MonthlyCalendarModal } from './Analytics/MonthlyCalendarModal';
 
 interface AnalyticsOverviewProps {
@@ -116,8 +116,9 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
   // Net Operating Profit = Total Revenue - Total Expenses - Total Commissions
   const netOperatingProfit = totalRevenue - totalExpenses - totalCommissions;
 
-  // Occupancy Rate calculation
-  // Determine days in the period
+  // Occupancy Rate calculation:
+  // Villa = 2 stays, Cottages = 2 stays, Ground Floor = 1 stay, First Floor = 1 stay, Cottage 1 = 1 stay, Cottage 2 = 1 stay
+  // Total physical capacity = 4 stays per day (Ground Floor, First Floor, Cottage 1, Cottage 2)
   let periodDays = 30;
   if (selectedMonth !== 'ALL') {
     const [year, month] = selectedMonth.split('-').map(Number);
@@ -127,11 +128,12 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
     periodDays = 90;
   }
 
-  const activeUnitsCount = settings.units.filter(u => u.isActive).length || 6;
-  const totalAvailableRoomNights = periodDays * activeUnitsCount;
-  const bookedRoomNights = validBookings.reduce((sum, b) => sum + (b.stayDays || 1), 0);
-  const rawOccupancyRate = totalAvailableRoomNights > 0 
-    ? Math.min(100, Math.round((bookedRoomNights / totalAvailableRoomNights) * 100))
+  const totalAvailableStayNights = periodDays * TOTAL_PHYSICAL_STAY_UNITS;
+  const bookedStayNights = validBookings.reduce((sum, b) => {
+    return sum + (b.stayDays || 1) * getStayUnitsWeight(b.unitAllotted);
+  }, 0);
+  const rawOccupancyRate = totalAvailableStayNights > 0 
+    ? Math.min(100, Math.round((bookedStayNights / totalAvailableStayNights) * 100))
     : 0;
 
   return (
@@ -332,8 +334,8 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
               {rawOccupancyRate}%
             </div>
             <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 flex items-center justify-between gap-1">
-              <span className="truncate">{bookedRoomNights} room-nights</span>
-              <span className="text-sky-700 font-semibold shrink-0">{activeUnitsCount} units</span>
+              <span className="truncate">{bookedStayNights} stay-nights</span>
+              <span className="text-sky-700 font-semibold shrink-0">4 stays max/day</span>
             </div>
           </div>
         </div>

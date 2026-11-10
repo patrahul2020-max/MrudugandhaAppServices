@@ -12,7 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Booking, Expense, PropertySettings } from '../../types';
-import { formatCurrencyINR, formatDateINR } from '../../utils/formatters';
+import { formatCurrencyINR, formatDateINR, getStayUnitsWeight, TOTAL_PHYSICAL_STAY_UNITS } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
 
 interface DetailedAnalyticsProps {
@@ -69,7 +69,7 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
 
   // Hospitality KPIs: ADR (Average Daily Rate) and RevPAR
   const totalRoomNightsBooked = useMemo(() => {
-    return validBookings.reduce((sum, b) => sum + (b.stayDays || 1), 0);
+    return validBookings.reduce((sum, b) => sum + (b.stayDays || 1) * getStayUnitsWeight(b.unitAllotted), 0);
   }, [validBookings]);
 
   const averageDailyRate = totalRoomNightsBooked > 0 ? Math.round(totalRevenue / totalRoomNightsBooked) : 0;
@@ -100,30 +100,44 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
 
   // Unit Occupancy Breakdown
   const unitStats = useMemo(() => {
-    const map: Record<string, { bookingsCount: number; nights: number; revenue: number }> = {};
+    const map: Record<string, { bookingsCount: number; nights: number; stayUnits: number; revenue: number }> = {};
     settings.units.forEach(u => {
-      map[u.name] = { bookingsCount: 0, nights: 0, revenue: 0 };
+      map[u.name] = { bookingsCount: 0, nights: 0, stayUnits: 0, revenue: 0 };
     });
 
     validBookings.forEach(b => {
       if (!map[b.unitAllotted]) {
-        map[b.unitAllotted] = { bookingsCount: 0, nights: 0, revenue: 0 };
+        map[b.unitAllotted] = { bookingsCount: 0, nights: 0, stayUnits: 0, revenue: 0 };
       }
+      const weight = getStayUnitsWeight(b.unitAllotted);
+      const stayNights = b.stayDays || 1;
       map[b.unitAllotted].bookingsCount += 1;
-      map[b.unitAllotted].nights += b.stayDays || 1;
+      map[b.unitAllotted].nights += stayNights;
+      map[b.unitAllotted].stayUnits += stayNights * weight;
       map[b.unitAllotted].revenue += b.totalAmount || 0;
     });
 
-    // Approximate days in period
-    const daysInPeriod = selectedMonth === 'ALL' ? 90 : 30;
+    // Days in period
+    let daysInPeriod = 30;
+    if (selectedMonth !== 'ALL') {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      daysInPeriod = new Date(year, month, 0).getDate();
+    } else {
+      daysInPeriod = 90;
+    }
 
-    return Object.entries(map).map(([unitName, data]) => ({
-      unitName,
-      bookingsCount: data.bookingsCount,
-      nights: data.nights,
-      revenue: data.revenue,
-      occupancyRate: Math.min(100, Math.round((data.nights / daysInPeriod) * 100)),
-    })).sort((a, b) => b.revenue - a.revenue);
+    return Object.entries(map).map(([unitName, data]) => {
+      const weight = getStayUnitsWeight(unitName);
+      return {
+        unitName,
+        bookingsCount: data.bookingsCount,
+        nights: data.nights,
+        stayUnits: data.stayUnits,
+        weight,
+        revenue: data.revenue,
+        occupancyRate: Math.min(100, Math.round((data.nights / daysInPeriod) * 100)),
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
   }, [validBookings, settings.units, selectedMonth]);
 
   // Expense Category Breakdown
@@ -256,7 +270,9 @@ export const DetailedAnalytics: React.FC<DetailedAnalyticsProps> = ({
                   </div>
 
                   <div className="flex justify-between text-[11px] text-slate-500">
-                    <span>{unit.nights} nights booked · {unit.bookingsCount} stays</span>
+                    <span>
+                      {unit.nights} nights ({unit.weight === 2 ? '2 stays/nt' : '1 stay/nt'}) · {unit.bookingsCount} bookings
+                    </span>
                     <span className="font-semibold text-slate-700 font-mono">{unit.occupancyRate}% occupancy</span>
                   </div>
                 </div>

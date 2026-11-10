@@ -133,3 +133,54 @@ export function formatTime12Hr(timeStr?: string): string {
   const hour12 = h % 12 || 12;
   return `${String(hour12).padStart(2, '0')}:${mStr || '00'} ${ampm}`;
 }
+
+/**
+ * Total physical stay units capacity for Mrudugandha Guesthouse:
+ * Ground Floor (1 stay) + First Floor (1 stay) + Cottage 1 (1 stay) + Cottage 2 (1 stay) = 4 stays per day.
+ */
+export const TOTAL_PHYSICAL_STAY_UNITS = 4;
+
+/**
+ * Returns the stay weight / physical units occupied by a given booking:
+ * - Full Villa / Villa: 2 stays (Ground Floor + First Floor)
+ * - Both Cottages / Cottages: 2 stays (Cottage 1 + Cottage 2)
+ * - Ground Floor: 1 stay
+ * - First Floor: 1 stay
+ * - Cottage 1: 1 stay
+ * - Cottage 2: 1 stay
+ */
+export function getStayUnitsWeight(unitAllotted?: string | null): number {
+  if (!unitAllotted) return 1;
+  const normalized = unitAllotted.toLowerCase().trim();
+
+  // Villa / Full Villa = 2 stays
+  if (normalized.includes('full villa') || normalized.includes('whole villa') || normalized === 'villa') {
+    return 2;
+  }
+
+  // Cottages / Both Cottages = 2 stays
+  if (
+    normalized.includes('both cottage') ||
+    normalized.includes('all cottage') ||
+    normalized === 'cottages' ||
+    normalized.includes('both cottages')
+  ) {
+    return 2;
+  }
+
+  // Individual units: Ground Floor = 1 stay, First Floor = 1 stay, Cottage 1 = 1 stay, Cottage 2 = 1 stay
+  if (normalized.includes('ground floor') || normalized === 'gf') {
+    return 1;
+  }
+  if (normalized.includes('first floor') || normalized === 'ff') {
+    return 1;
+  }
+  if (normalized.includes('cottage 1') || normalized.includes('cottage-1')) {
+    return 1;
+  }
+  if (normalized.includes('cottage 2') || normalized.includes('cottage-2')) {
+    return 1;
+  }
+
+  return 1;
+}

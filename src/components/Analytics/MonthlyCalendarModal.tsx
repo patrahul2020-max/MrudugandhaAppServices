@@ -13,7 +13,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { Booking, PropertySettings } from '../../types';
-import { formatDateINR, formatCurrencyINR } from '../../utils/formatters';
+import { formatDateINR, formatCurrencyINR, getStayUnitsWeight, TOTAL_PHYSICAL_STAY_UNITS } from '../../utils/formatters';
 import { getUnitColorScheme } from '../../utils/unitColors';
 
 interface MonthlyCalendarModalProps {
@@ -120,9 +120,11 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
       const checkOuts = validBookings.filter(b => b.checkOutDate === dateStr);
 
       const isToday = dateStr === todayStr;
-      const totalUnitsCount = activeUnits.length || 6;
-      const occupiedCount = activeBookings.length;
-      const vacantCount = Math.max(0, totalUnitsCount - occupiedCount);
+      // Weighted occupied stays: Villa = 2 stays, Cottages = 2 stays, Ground Floor = 1 stay, First Floor = 1 stay, Cottage 1 = 1 stay, Cottage 2 = 1 stay
+      // Total physical capacity = 4 stays per day (Ground Floor, First Floor, Cottage 1, Cottage 2)
+      const occupiedCount = activeBookings.reduce((sum, b) => sum + getStayUnitsWeight(b.unitAllotted), 0);
+      const vacantCount = Math.max(0, TOTAL_PHYSICAL_STAY_UNITS - occupiedCount);
+      const isFull = occupiedCount >= TOTAL_PHYSICAL_STAY_UNITS;
 
       days.push({
         day,
@@ -134,18 +136,18 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
         checkOuts,
         occupiedCount,
         vacantCount,
-        isFull: occupiedCount >= totalUnitsCount,
+        isFull,
       });
     }
     return days;
-  }, [year, month, totalDays, validBookings, activeUnits]);
+  }, [year, month, totalDays, validBookings]);
 
   // Monthly stats
   const totalRoomNights = useMemo(() => {
     return calendarDays.reduce((sum, d) => sum + d.occupiedCount, 0);
   }, [calendarDays]);
 
-  const totalPossibleNights = totalDays * (activeUnits.length || 6);
+  const totalPossibleNights = totalDays * TOTAL_PHYSICAL_STAY_UNITS;
   const occupancyPercent = totalPossibleNights > 0
     ? Math.min(100, Math.round((totalRoomNights / totalPossibleNights) * 100))
     : 0;
@@ -171,7 +173,7 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-emerald-200/90 truncate">
-                {settings.propertyName} · {activeUnits.length} Units Configured
+                {settings.propertyName} · 4 Physical Stay Units (Villa: 2 stays, Cottages: 2 stays)
               </p>
             </div>
           </div>
@@ -237,7 +239,7 @@ export const MonthlyCalendarModal: React.FC<MonthlyCalendarModalProps> = ({
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1 font-semibold text-slate-700">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>{totalRoomNights} Nights</span>
+                <span>{totalRoomNights} Stay-Nights</span>
               </div>
               <div className="flex items-center gap-1 font-semibold text-slate-700">
                 <span className="w-2 h-2 rounded-full bg-sky-500"></span>
