@@ -716,21 +716,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-emerald-50/90 border-2 border-emerald-300 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
-                    Stay Duration
-                  </span>
-                  <span className="text-xl font-bold font-mono text-emerald-950 mt-0.5">
-                    {stayDaysCount} Night{stayDaysCount > 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="mt-1 pt-1 border-t border-emerald-200/90">
-                  <span className="text-[10px] uppercase font-bold text-emerald-800 block">Tariff × Nights:</span>
-                  <span className="text-xs font-bold font-mono text-emerald-950">
-                    ₹{baseRatePerNight.toLocaleString('en-IN')} × {stayDaysCount} = <strong className="text-emerald-900">₹{calculatedTotalPayable.toLocaleString('en-IN')}</strong>
-                  </span>
-                </div>
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-2.5 flex flex-col justify-center">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                  Stay in Days (Nights)
+                </span>
+                <span className="text-xl font-bold font-mono text-emerald-950 mt-0.5">
+                  {formData.stayDays || 1} Night{(formData.stayDays || 1) > 1 ? 's' : ''}
+                </span>
               </div>
             </div>
 
@@ -829,62 +821,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
             )}
 
-            {/* Prominent Rate × Stay Nights Payable Calculation Display */}
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border-2 border-emerald-400/90 rounded-xl p-3 sm:p-4 shadow-2xs space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-800 text-white shadow-2xs">
-                      Total Payable Calculation
-                    </span>
-                    <span className="text-xs font-bold text-slate-800">
-                      {formData.unitAllotted}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Payable amount is auto-calculated by multiplying 1 night charge by total stay nights:
-                  </p>
-                </div>
-                {formData.totalAmount !== calculatedTotalPayable && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsManualTotal(false);
-                      const adv = Math.round(calculatedTotalPayable / 2);
-                      setFormData(prev => ({
-                        ...prev,
-                        totalAmount: calculatedTotalPayable,
-                        advancePaid: adv,
-                        balanceAmount: calculatedTotalPayable - adv,
-                      }));
-                    }}
-                    className="px-3 py-1.5 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs cursor-pointer self-start sm:self-auto shrink-0 transition-colors"
-                    title="Reset to exact formula (Rate × Stay Nights)"
-                  >
-                    ↻ Reset to ₹{calculatedTotalPayable.toLocaleString('en-IN')}
-                  </button>
-                )}
-              </div>
-
-              {/* Exact Formula Breakdown Box (e.g. Full Villa 15,000 x 3 = 45,000) */}
-              <div className="flex items-center gap-2 flex-wrap bg-white/95 p-2.5 rounded-lg border border-emerald-300">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono font-bold text-slate-900">
-                  <span>₹{baseRatePerNight.toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] font-normal text-slate-500">(1 Night Charge)</span>
-                </div>
-                <span className="text-base font-black text-emerald-700">×</span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-300 text-xs font-mono font-bold text-slate-900">
-                  <span>{stayDaysCount}</span>
-                  <span className="text-[10px] font-normal text-slate-500">Stay Night{stayDaysCount > 1 ? 's' : ''}</span>
-                </div>
-                <span className="text-base font-black text-emerald-700">=</span>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-900 text-amber-200 text-sm font-mono font-black shadow-sm">
-                  <span>₹{calculatedTotalPayable.toLocaleString('en-IN')}</span>
-                  <span className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Payable Amount</span>
-                </div>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -909,9 +845,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     }}
                     className="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
                   />
-                </div>
-                <div className="mt-1 text-[11px] font-semibold text-emerald-800">
-                  Standard: ₹{baseRatePerNight.toLocaleString('en-IN')} × {stayDaysCount} = <strong>₹{calculatedTotalPayable.toLocaleString('en-IN')}</strong>
                 </div>
               </div>
 

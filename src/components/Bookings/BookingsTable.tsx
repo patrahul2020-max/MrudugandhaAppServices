@@ -582,29 +582,6 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </button>
           </div>
 
-          {/* Prominent Rate × Stay Nights Payable Formula Display */}
-          <div className="bg-white/95 border-2 border-emerald-400 rounded-lg p-2.5 flex items-center justify-between text-xs flex-wrap gap-2 shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-800 text-white shadow-2xs">
-                Payable Formula
-              </span>
-              <span className="font-bold text-slate-900">{quickUnit}</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-mono text-xs flex-wrap">
-              <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold border border-slate-300">
-                ₹{quickRatePerNight.toLocaleString('en-IN')} <span className="font-normal text-[10px] text-slate-500">/ night</span>
-              </span>
-              <span className="font-black text-emerald-700">×</span>
-              <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold border border-slate-300">
-                {quickStayDays} Night{quickStayDays > 1 ? 's' : ''}
-              </span>
-              <span className="font-black text-emerald-700">=</span>
-              <span className="bg-emerald-900 text-amber-200 px-2.5 py-0.5 rounded font-black border border-emerald-950 text-sm shadow-2xs">
-                ₹{quickCalculatedTotal.toLocaleString('en-IN')} Total Payable
-              </span>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-2.5 text-xs">
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Guest Name *</label>
@@ -668,7 +645,7 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Total Payable (₹)</label>
+              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Total Amount Payable (₹)</label>
               <input
                 type="number"
                 step="any"
@@ -678,9 +655,6 @@ export const BookingsTable: React.FC<BookingsTableProps> = ({
                 onChange={e => setQuickTotal(parseFloat(e.target.value) || 0)}
                 className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
               />
-              <span className="text-[10px] font-bold text-emerald-800 block mt-0.5 font-mono truncate">
-                ₹{quickRatePerNight.toLocaleString('en-IN')} × {quickStayDays}d
-              </span>
             </div>
           </div>
 
