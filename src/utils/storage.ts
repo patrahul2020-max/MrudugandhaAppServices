@@ -1,4 +1,5 @@
 import { Booking, Expense, PropertySettings, UnitConfig, StoredDocument } from '../types';
+import { saveIdbDocuments, getIdbDocuments, deleteIdbDocument } from './idb';
 
 const STORAGE_KEY_BOOKINGS = 'atithi_bookings_v1';
 const STORAGE_KEY_EXPENSES = 'atithi_expenses_v1';
@@ -229,17 +230,84 @@ export function loadDocuments(): StoredDocument[] {
     const data = localStorage.getItem(STORAGE_KEY_DOCUMENTS);
     if (!data) return [];
     return JSON.parse(data) || [];
-  } catch (err) {
-    console.error('Failed to load documents from localStorage', err);
+  } catch {
     return [];
   }
 }
 
-export function saveDocuments(documents: StoredDocument[]): void {
+/**
+ * Loads full documents from IndexedDB with full data URLs
+ */
+export async function loadDocumentsFromIdb(): Promise<StoredDocument[]> {
   try {
-    localStorage.setItem(STORAGE_KEY_DOCUMENTS, JSON.stringify(documents));
-  } catch (err) {
-    console.error('Failed to save documents to localStorage', err);
+    return await getIdbDocuments();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Saves documents into persistent storage.
+ * Full document content (including large base64 PDFs) is safely saved into IndexedDB.
+ * A lightweight metadata version is saved into localStorage, preventing any QuotaExceededError.
+ */
+export function saveDocuments(documents: StoredDocument[]): void {
+  if (!Array.isArray(documents)) return;
+
+  // 1. Asynchronously persist full documents (large base64 PDFs & images) into IndexedDB
+  saveIdbDocuments(documents).catch(() => {});
+
+  // 2. Safely cache in localStorage without exceeding the 5MB origin quota
+  try {
+    // Attempt full save first if size permits
+    const fullJson = JSON.stringify(documents);
+    // If JSON is under 1.5MB, try direct localStorage save
+    if (fullJson.length < 1500000) {
+      localStorage.setItem(STORAGE_KEY_DOCUMENTS, fullJson);
+      return;
+    }
+  } catch {
+    // Fall through to lightweight metadata caching
+  }
+
+  // If full JSON is too large or setItem threw QuotaExceededError,
+  // sanitize by stripping heavy base64 fileUrls (>2KB). Full files remain in IndexedDB & server.
+  try {
+    const lightweightDocs = documents.map(doc => {
+      if (doc.fileUrl && doc.fileUrl.startsWith('data:') && doc.fileUrl.length > 2048) {
+        return {
+          ...doc,
+          fileUrl: '', // Full binary content preserved in IndexedDB & Cloud Server
+        };
+      }
+      return doc;
+    });
+    localStorage.setItem(STORAGE_KEY_DOCUMENTS, JSON.stringify(lightweightDocs));
+  } catch {
+    // Minimal fallback: store top 15 document metadata only
+    try {
+      const minimalDocs = documents.slice(0, 15).map(doc => ({
+        ...doc,
+        fileUrl: '',
+      }));
+      localStorage.setItem(STORAGE_KEY_DOCUMENTS, JSON.stringify(minimalDocs));
+    } catch {
+      // Graceful silent fallback; IndexedDB and server handle persistence
+    }
+  }
+}
+
+/**
+ * Deletes a document from both localStorage and IndexedDB
+ */
+export function deleteLocalDocument(id: string): void {
+  deleteIdbDocument(id).catch(() => {});
+  try {
+    const current = loadDocuments();
+    const updated = current.filter(d => d.id !== id);
+    saveDocuments(updated);
+  } catch {
+    // Ignore
   }
 }
 

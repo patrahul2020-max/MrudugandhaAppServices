@@ -25,6 +25,7 @@ import {
   saveSettings,
   loadDocuments,
   saveDocuments,
+  loadDocumentsFromIdb,
   resetToDemoData,
   DEFAULT_SETTINGS
 } from './utils/storage';
@@ -141,6 +142,20 @@ export default function App() {
     setExpenses(localE);
     setSettings(localS);
     setDocuments(localD);
+
+    // Hydrate complete binary documents (PDFs & images) from IndexedDB
+    loadDocumentsFromIdb().then(idbDocs => {
+      if (idbDocs && idbDocs.length > 0) {
+        setDocuments(prev => {
+          const map = new Map<string, StoredDocument>();
+          prev.forEach(d => map.set(d.id, d));
+          idbDocs.forEach(d => {
+            if (d.fileUrl) map.set(d.id, d);
+          });
+          return Array.from(map.values());
+        });
+      }
+    });
 
     // Initial fetch of users roster
     fetchCloudUsers().then(users => {
